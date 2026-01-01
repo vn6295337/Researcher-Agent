@@ -1,0 +1,22 @@
+# Core
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# A2A Server
+fastapi>=0.115.0
+uvicorn>=0.32.0
+
+# HTTP Client
+httpx>=0.27.0
+
+# Yahoo Finance (valuation, volatility)
+yfinance>=0.2.40
+
+# Search (news)
+tavily-python>=0.3.0
+
+# Sentiment Analysis
+vaderSentiment>=3.3.2
+
+# MCP SDK (for server.py imports)
+mcp>=1.0.0
