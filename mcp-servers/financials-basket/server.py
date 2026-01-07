@@ -102,30 +102,45 @@ def get_latest_value(facts: dict, concept: str, unit: str = "USD") -> Optional[d
     Extract latest value for a concept from company facts.
     Returns dict with value, period end date, and fiscal year.
     """
-    try:
-        concept_data = facts.get("us-gaap", {}).get(concept, {})
-        units = concept_data.get("units", {}).get(unit, [])
+    # Defensive check for None or invalid facts
+    if not facts or not isinstance(facts, dict):
+        return None
 
-        if not units:
+    try:
+        us_gaap = facts.get("us-gaap")
+        if not us_gaap or not isinstance(us_gaap, dict):
+            return None
+
+        concept_data = us_gaap.get(concept)
+        if not concept_data or not isinstance(concept_data, dict):
+            return None
+
+        units_data = concept_data.get("units")
+        if not units_data or not isinstance(units_data, dict):
+            return None
+
+        units = units_data.get(unit, [])
+        if not units or not isinstance(units, list):
             return None
 
         # Filter for annual (10-K) filings and get most recent
-        annual_facts = [f for f in units if f.get("form") == "10-K"]
+        annual_facts = [f for f in units if isinstance(f, dict) and f.get("form") == "10-K"]
         if not annual_facts:
-            annual_facts = units  # Fallback to all if no 10-K
+            annual_facts = [f for f in units if isinstance(f, dict)]  # Fallback to all if no 10-K
+
+        if not annual_facts:
+            return None
 
         # Sort by end date descending
         annual_facts.sort(key=lambda x: x.get("end", ""), reverse=True)
 
-        if annual_facts:
-            latest = annual_facts[0]
-            return {
-                "value": latest.get("val"),
-                "end_date": latest.get("end"),
-                "fiscal_year": latest.get("fy"),
-                "form": latest.get("form")
-            }
-        return None
+        latest = annual_facts[0]
+        return {
+            "value": latest.get("val"),
+            "end_date": latest.get("end"),
+            "fiscal_year": latest.get("fy"),
+            "form": latest.get("form")
+        }
     except Exception as e:
         logger.error(f"Error extracting {concept}: {e}")
         return None
@@ -133,18 +148,35 @@ def get_latest_value(facts: dict, concept: str, unit: str = "USD") -> Optional[d
 
 def calculate_growth(facts: dict, concept: str, years: int = 3) -> Optional[float]:
     """Calculate CAGR for a concept over specified years."""
-    try:
-        concept_data = facts.get("us-gaap", {}).get(concept, {})
-        units = concept_data.get("units", {}).get("USD", [])
+    # Defensive check for None or invalid facts
+    if not facts or not isinstance(facts, dict):
+        return None
 
-        annual_facts = [f for f in units if f.get("form") == "10-K"]
+    try:
+        us_gaap = facts.get("us-gaap")
+        if not us_gaap or not isinstance(us_gaap, dict):
+            return None
+
+        concept_data = us_gaap.get(concept)
+        if not concept_data or not isinstance(concept_data, dict):
+            return None
+
+        units_data = concept_data.get("units")
+        if not units_data or not isinstance(units_data, dict):
+            return None
+
+        units = units_data.get("USD", [])
+        if not units or not isinstance(units, list):
+            return None
+
+        annual_facts = [f for f in units if isinstance(f, dict) and f.get("form") == "10-K"]
         annual_facts.sort(key=lambda x: x.get("end", ""), reverse=True)
 
         if len(annual_facts) < years + 1:
             return None
 
-        latest_val = annual_facts[0].get("val", 0)
-        older_val = annual_facts[years].get("val", 0)
+        latest_val = annual_facts[0].get("val", 0) or 0
+        older_val = annual_facts[years].get("val", 0) or 0
 
         if older_val <= 0 or latest_val <= 0:
             return None
