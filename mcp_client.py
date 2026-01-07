@@ -26,11 +26,20 @@ MCP_SERVERS_PATH = Path(__file__).parent / "mcp-servers"
 METRIC_DELAY_MS = int(os.getenv("METRIC_DELAY_MS", "300"))
 
 
-async def emit_metric(progress_callback: Optional[Callable], source: str, metric: str, value: Any):
-    """Emit a metric event with configurable delay."""
+async def emit_metric(
+    progress_callback: Optional[Callable],
+    source: str,
+    metric: str,
+    value: Any,
+    end_date: str = None,
+    fiscal_year: int = None,
+    form: str = None
+):
+    """Emit a metric event with optional temporal data and configurable delay."""
     if progress_callback:
-        logger.debug(f"emit_metric: {source}/{metric}={value}")
-        progress_callback(source, metric, value)
+        temporal_info = f" ({form} {fiscal_year})" if fiscal_year else ""
+        logger.debug(f"emit_metric: {source}/{metric}={value}{temporal_info}")
+        progress_callback(source, metric, value, end_date, fiscal_year, form)
         await asyncio.sleep(METRIC_DELAY_MS / 1000)
 
 
@@ -256,12 +265,25 @@ async def _extract_and_emit_metrics(
     if source == "financials":
         financials = result.get("financials", {})
         debt = result.get("debt", {})
-        if financials.get("revenue", {}).get("value"):
-            await emit_metric(progress_callback, source, "revenue", financials["revenue"]["value"])
+        # Extract temporal data with metrics
+        revenue = financials.get("revenue", {})
+        if revenue.get("value"):
+            await emit_metric(
+                progress_callback, source, "revenue", revenue["value"],
+                end_date=revenue.get("end_date"),
+                fiscal_year=revenue.get("fiscal_year"),
+                form=revenue.get("form")
+            )
         if financials.get("net_margin"):
             await emit_metric(progress_callback, source, "net_margin", financials["net_margin"])
-        if financials.get("eps", {}).get("value"):
-            await emit_metric(progress_callback, source, "EPS", financials["eps"]["value"])
+        eps = financials.get("eps", {})
+        if eps.get("value"):
+            await emit_metric(
+                progress_callback, source, "EPS", eps["value"],
+                end_date=eps.get("end_date"),
+                fiscal_year=eps.get("fiscal_year"),
+                form=eps.get("form")
+            )
         if debt.get("debt_to_equity"):
             await emit_metric(progress_callback, source, "debt_to_equity", debt["debt_to_equity"])
 

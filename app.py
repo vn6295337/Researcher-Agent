@@ -68,6 +68,10 @@ class MetricEntry(BaseModel):
     metric: str
     value: Any
     timestamp: str
+    # Temporal fields for financial data
+    end_date: Optional[str] = None      # "2023-09-30"
+    fiscal_year: Optional[int] = None   # 2023
+    form: Optional[str] = None          # "10-K" or "10-Q"
 
 
 class Task(BaseModel):
@@ -235,20 +239,25 @@ async def handle_message_send(params: dict, request_id: Any) -> dict:
 
 def create_progress_callback(task_id: str):
     """Create a progress callback that adds partial metrics to the task."""
-    def callback(source: str, metric: str, value: Any):
+    def callback(source: str, metric: str, value: Any,
+                 end_date: str = None, fiscal_year: int = None, form: str = None):
         task = TASK_STORE.get(task_id)
         if task and task.status == TaskStatus.WORKING:
             entry = MetricEntry(
                 source=source,
                 metric=metric,
                 value=value,
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().isoformat(),
+                end_date=end_date,
+                fiscal_year=fiscal_year,
+                form=form
             )
             if task.partial_metrics is None:
                 task.partial_metrics = []
             task.partial_metrics.append(entry)
             task.updated_at = datetime.now().isoformat()
-            logger.info(f"Task {task_id}: [{source}] {metric} = {value}")
+            temporal_info = f" ({form} {fiscal_year})" if fiscal_year else ""
+            logger.info(f"Task {task_id}: [{source}] {metric} = {value}{temporal_info}")
     return callback
 
 
