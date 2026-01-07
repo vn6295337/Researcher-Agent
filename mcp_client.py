@@ -263,78 +263,96 @@ async def _extract_and_emit_metrics(
         return
 
     if source == "financials":
-        financials = result.get("financials", {})
-        debt = result.get("debt", {})
+        financials = result.get("financials") or {}
+        debt = result.get("debt") or {}
         # Extract temporal data with metrics
-        revenue = financials.get("revenue", {})
-        if revenue.get("value"):
+        revenue = financials.get("revenue") or {}
+        if isinstance(revenue, dict) and revenue.get("value"):
             await emit_metric(
                 progress_callback, source, "revenue", revenue["value"],
                 end_date=revenue.get("end_date"),
                 fiscal_year=revenue.get("fiscal_year"),
                 form=revenue.get("form")
             )
-        if financials.get("net_margin"):
-            await emit_metric(progress_callback, source, "net_margin", financials["net_margin"])
-        eps = financials.get("eps", {})
-        if eps.get("value"):
+        net_margin = financials.get("net_margin") or financials.get("net_margin_pct")
+        if net_margin is not None:
+            await emit_metric(progress_callback, source, "net_margin", net_margin)
+        eps = financials.get("eps") or {}
+        if isinstance(eps, dict) and eps.get("value"):
             await emit_metric(
                 progress_callback, source, "EPS", eps["value"],
                 end_date=eps.get("end_date"),
                 fiscal_year=eps.get("fiscal_year"),
                 form=eps.get("form")
             )
-        if debt.get("debt_to_equity"):
-            await emit_metric(progress_callback, source, "debt_to_equity", debt["debt_to_equity"])
+        debt_to_equity = debt.get("debt_to_equity")
+        if debt_to_equity is not None:
+            await emit_metric(progress_callback, source, "debt_to_equity", debt_to_equity)
 
     elif source == "volatility":
-        metrics = result.get("metrics", {})
-        if metrics.get("beta", {}).get("value") is not None:
-            await emit_metric(progress_callback, source, "beta", metrics["beta"]["value"])
-        if metrics.get("vix", {}).get("value") is not None:
-            await emit_metric(progress_callback, source, "VIX", metrics["vix"]["value"])
-        if metrics.get("historical_volatility", {}).get("value") is not None:
-            await emit_metric(progress_callback, source, "hist_vol", metrics["historical_volatility"]["value"])
+        metrics = result.get("metrics") or {}
+        beta = metrics.get("beta") or {}
+        if isinstance(beta, dict) and beta.get("value") is not None:
+            await emit_metric(progress_callback, source, "beta", beta["value"])
+        vix = metrics.get("vix") or {}
+        if isinstance(vix, dict) and vix.get("value") is not None:
+            await emit_metric(progress_callback, source, "VIX", vix["value"])
+        hist_vol = metrics.get("historical_volatility") or {}
+        if isinstance(hist_vol, dict) and hist_vol.get("value") is not None:
+            await emit_metric(progress_callback, source, "hist_vol", hist_vol["value"])
 
     elif source == "macro":
-        metrics = result.get("metrics", {})
-        if metrics.get("gdp_growth", {}).get("value") is not None:
-            await emit_metric(progress_callback, source, "GDP_growth", metrics["gdp_growth"]["value"])
-        if metrics.get("interest_rate", {}).get("value") is not None:
-            await emit_metric(progress_callback, source, "interest_rate", metrics["interest_rate"]["value"])
-        if metrics.get("cpi_inflation", {}).get("value") is not None:
-            await emit_metric(progress_callback, source, "inflation", metrics["cpi_inflation"]["value"])
-        if metrics.get("unemployment", {}).get("value") is not None:
-            await emit_metric(progress_callback, source, "unemployment", metrics["unemployment"]["value"])
+        metrics = result.get("metrics") or {}
+        gdp = metrics.get("gdp_growth") or {}
+        if isinstance(gdp, dict) and gdp.get("value") is not None:
+            await emit_metric(progress_callback, source, "GDP_growth", gdp["value"])
+        interest = metrics.get("interest_rate") or {}
+        if isinstance(interest, dict) and interest.get("value") is not None:
+            await emit_metric(progress_callback, source, "interest_rate", interest["value"])
+        inflation = metrics.get("cpi_inflation") or {}
+        if isinstance(inflation, dict) and inflation.get("value") is not None:
+            await emit_metric(progress_callback, source, "inflation", inflation["value"])
+        unemployment = metrics.get("unemployment") or {}
+        if isinstance(unemployment, dict) and unemployment.get("value") is not None:
+            await emit_metric(progress_callback, source, "unemployment", unemployment["value"])
 
     elif source == "valuation":
-        metrics = result.get("metrics", {})
-        pe = metrics.get("pe_ratio", {})
-        pe_val = pe.get("trailing") or pe.get("forward") if isinstance(pe, dict) else pe
+        metrics = result.get("metrics") or {}
+        pe = metrics.get("pe_ratio") or {}
+        pe_val = None
+        if isinstance(pe, dict):
+            pe_val = pe.get("trailing") or pe.get("forward")
+        elif isinstance(pe, (int, float)):
+            pe_val = pe
         if pe_val is not None:
             await emit_metric(progress_callback, source, "P/E", pe_val)
-        if metrics.get("pb_ratio") is not None:
-            await emit_metric(progress_callback, source, "P/B", metrics["pb_ratio"])
-        if metrics.get("ps_ratio") is not None:
-            await emit_metric(progress_callback, source, "P/S", metrics["ps_ratio"])
-        if metrics.get("ev_ebitda") is not None:
-            await emit_metric(progress_callback, source, "EV/EBITDA", metrics["ev_ebitda"])
+        pb_ratio = metrics.get("pb_ratio")
+        if pb_ratio is not None:
+            await emit_metric(progress_callback, source, "P/B", pb_ratio)
+        ps_ratio = metrics.get("ps_ratio")
+        if ps_ratio is not None:
+            await emit_metric(progress_callback, source, "P/S", ps_ratio)
+        ev_ebitda = metrics.get("ev_ebitda")
+        if ev_ebitda is not None:
+            await emit_metric(progress_callback, source, "EV/EBITDA", ev_ebitda)
 
     elif source == "news":
-        articles = result.get("articles", [])
-        if articles:
+        articles = result.get("articles") or []
+        if articles and isinstance(articles, list) and len(articles) > 0:
             await emit_metric(progress_callback, source, "articles_found", len(articles))
         else:
             await emit_metric(progress_callback, source, "status", "No recent news found")
 
     elif source == "sentiment":
         has_data = False
-        if result.get("composite_score") is not None:
-            await emit_metric(progress_callback, source, "composite_score", result["composite_score"])
+        composite = result.get("composite_score")
+        if composite is not None:
+            await emit_metric(progress_callback, source, "composite_score", composite)
             has_data = True
-        metrics = result.get("metrics", {})
-        if metrics.get("finnhub", {}).get("sentiment_score") is not None:
-            await emit_metric(progress_callback, source, "finnhub_score", metrics["finnhub"]["sentiment_score"])
+        metrics = result.get("metrics") or {}
+        finnhub = metrics.get("finnhub") or {}
+        if isinstance(finnhub, dict) and finnhub.get("sentiment_score") is not None:
+            await emit_metric(progress_callback, source, "finnhub_score", finnhub["sentiment_score"])
             has_data = True
         if not has_data:
             await emit_metric(progress_callback, source, "status", "No sentiment data available")
