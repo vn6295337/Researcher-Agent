@@ -270,9 +270,12 @@ async def _extract_and_emit_metrics(
         return
 
     if source == "financials":
-        # Result IS the financials data directly (not nested under "financials" key)
+        # Result structure: {"financials": {...}, "debt": {...}, ...}
+        financials = result.get("financials") or {}
+        debt = result.get("debt") or {}
+
         # Revenue has temporal data from SEC EDGAR
-        revenue = result.get("revenue") or {}
+        revenue = financials.get("revenue") or {}
         if isinstance(revenue, dict) and revenue.get("value"):
             await emit_metric(
                 progress_callback, source, "revenue", revenue["value"],
@@ -282,7 +285,7 @@ async def _extract_and_emit_metrics(
             )
 
         # Net margin - now a dict with temporal data
-        net_margin = result.get("net_margin_pct") or result.get("net_margin")
+        net_margin = financials.get("net_margin_pct") or financials.get("net_margin")
         if isinstance(net_margin, dict) and net_margin.get("value") is not None:
             await emit_metric(
                 progress_callback, source, "net_margin", net_margin["value"],
@@ -295,7 +298,7 @@ async def _extract_and_emit_metrics(
             await emit_metric(progress_callback, source, "net_margin", net_margin)
 
         # EPS has temporal data
-        eps = result.get("eps") or {}
+        eps = financials.get("eps") or {}
         if isinstance(eps, dict) and eps.get("value"):
             await emit_metric(
                 progress_callback, source, "EPS", eps["value"],
@@ -304,8 +307,7 @@ async def _extract_and_emit_metrics(
                 form=eps.get("form")
             )
 
-        # Debt metrics are in the debt sub-object from fetch_debt_metrics
-        debt = result.get("debt") or {}
+        # Debt metrics from the debt sub-object
         debt_to_equity = debt.get("debt_to_equity")
         if isinstance(debt_to_equity, dict) and debt_to_equity.get("value") is not None:
             await emit_metric(
