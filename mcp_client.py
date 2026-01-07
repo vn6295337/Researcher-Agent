@@ -35,11 +35,18 @@ async def emit_metric(
     fiscal_year: int = None,
     form: str = None
 ):
-    """Emit a metric event with optional temporal data and configurable delay."""
+    """Emit a metric event as a structured payload with optional temporal data."""
     if progress_callback:
-        temporal_info = f" ({form} {fiscal_year})" if fiscal_year else ""
-        logger.debug(f"emit_metric: {source}/{metric}={value}{temporal_info}")
-        progress_callback(source, metric, value, end_date, fiscal_year, form)
+        payload = {
+            "source": source,
+            "metric": metric,
+            "value": value,
+            "end_date": end_date,
+            "fiscal_year": fiscal_year,
+            "form": form,
+        }
+        logger.debug(f"emit_metric payload: {json.dumps(payload, default=str)}")
+        progress_callback(payload)
         await asyncio.sleep(METRIC_DELAY_MS / 1000)
 
 

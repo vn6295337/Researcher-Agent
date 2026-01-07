@@ -238,11 +238,18 @@ async def handle_message_send(params: dict, request_id: Any) -> dict:
 
 
 def create_progress_callback(task_id: str):
-    """Create a progress callback that adds partial metrics to the task."""
-    def callback(source: str, metric: str, value: Any,
-                 end_date: str = None, fiscal_year: int = None, form: str = None):
+    """Create a progress callback that receives structured metric payloads."""
+    def callback(payload: dict):
         task = TASK_STORE.get(task_id)
         if task and task.status == TaskStatus.WORKING:
+            # Extract fields from structured payload
+            source = payload.get("source", "unknown")
+            metric = payload.get("metric", "unknown")
+            value = payload.get("value")
+            end_date = payload.get("end_date")
+            fiscal_year = payload.get("fiscal_year")
+            form = payload.get("form")
+
             entry = MetricEntry(
                 source=source,
                 metric=metric,
