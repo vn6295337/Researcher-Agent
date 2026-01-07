@@ -47,6 +47,26 @@ logger = logging.getLogger("financials-basket")
 # Thread pool for yfinance (synchronous library)
 _executor = ThreadPoolExecutor(max_workers=2)
 
+
+def create_temporal_metric(value, source_metric) -> dict:
+    """Create a metric with temporal data inherited from source metric.
+
+    Args:
+        value: The calculated metric value
+        source_metric: Source metric dict containing temporal data (end_date, fiscal_year, form)
+
+    Returns:
+        Dict with value and inherited temporal data
+    """
+    if source_metric and isinstance(source_metric, dict):
+        return {
+            "value": value,
+            "end_date": source_metric.get("end_date"),
+            "fiscal_year": source_metric.get("fiscal_year"),
+            "form": source_metric.get("form")
+        }
+    return {"value": value}
+
 # Initialize MCP server
 server = Server("financials-basket")
 
@@ -254,18 +274,27 @@ async def fetch_financials(ticker: str) -> dict:
 
             stockholders_equity = get_latest_value(facts, "StockholdersEquity")
 
-            # Calculate margins
+            # Calculate margins (preserve temporal data from source metrics)
             gross_margin = None
             if revenue and gross_profit and revenue["value"] and gross_profit["value"]:
-                gross_margin = round((gross_profit["value"] / revenue["value"]) * 100, 2)
+                gross_margin = create_temporal_metric(
+                    round((gross_profit["value"] / revenue["value"]) * 100, 2),
+                    revenue
+                )
 
             operating_margin = None
             if revenue and operating_income and revenue["value"] and operating_income["value"]:
-                operating_margin = round((operating_income["value"] / revenue["value"]) * 100, 2)
+                operating_margin = create_temporal_metric(
+                    round((operating_income["value"] / revenue["value"]) * 100, 2),
+                    revenue
+                )
 
             net_margin = None
             if revenue and net_income and revenue["value"] and net_income["value"]:
-                net_margin = round((net_income["value"] / revenue["value"]) * 100, 2)
+                net_margin = create_temporal_metric(
+                    round((net_income["value"] / revenue["value"]) * 100, 2),
+                    revenue
+                )
 
             # Revenue growth
             revenue_growth = calculate_growth(facts, "Revenues") or \
@@ -334,14 +363,17 @@ async def fetch_debt_metrics(ticker: str) -> dict:
             # Get EBITDA or operating income for leverage ratio
             operating_income = get_latest_value(facts, "OperatingIncomeLoss")
 
-            # Debt to equity
+            # Debt to equity (preserve temporal data)
             stockholders_equity = get_latest_value(facts, "StockholdersEquity")
             debt_to_equity = None
             if total_debt and stockholders_equity:
                 debt_val = total_debt.get("value", 0) or 0
                 equity_val = stockholders_equity.get("value", 0) or 0
                 if equity_val > 0:
-                    debt_to_equity = round(debt_val / equity_val, 2)
+                    debt_to_equity = create_temporal_metric(
+                        round(debt_val / equity_val, 2),
+                        total_debt  # Inherit temporal data from total_debt
+                    )
 
             return {
                 "ticker": ticker.upper(),
@@ -913,8 +945,9 @@ def _build_swot_from_fallback(data: dict) -> dict:
         elif growth < 0:
             swot_summary["weaknesses"].append(f"Declining revenue: {growth}%")
 
-    # Debt analysis
-    d_to_e = debt.get("debt_to_equity")
+    # Debt analysis (handle both dict and plain number formats)
+    d_to_e_data = debt.get("debt_to_equity")
+    d_to_e = d_to_e_data.get("value") if isinstance(d_to_e_data, dict) else d_to_e_data
     if d_to_e is not None:
         if d_to_e > 2:
             swot_summary["threats"].append(f"High leverage: {d_to_e}x debt-to-equity")
@@ -998,8 +1031,9 @@ async def get_sec_fundamentals_basket(ticker: str) -> dict:
             elif growth < 0:
                 swot_summary["weaknesses"].append(f"Declining revenue: {growth}% CAGR (3yr)")
 
-        # Margins
-        net_margin = financials.get("net_margin_pct")
+        # Margins (handle both dict and plain number formats)
+        net_margin_data = financials.get("net_margin_pct")
+        net_margin = net_margin_data.get("value") if isinstance(net_margin_data, dict) else net_margin_data
         if net_margin is not None:
             if net_margin > 15:
                 swot_summary["strengths"].append(f"High profitability: {net_margin}% net margin")
@@ -1010,13 +1044,15 @@ async def get_sec_fundamentals_basket(ticker: str) -> dict:
             elif net_margin < 5:
                 swot_summary["weaknesses"].append(f"Thin margins: {net_margin}% net margin")
 
-        op_margin = financials.get("operating_margin_pct")
+        op_margin_data = financials.get("operating_margin_pct")
+        op_margin = op_margin_data.get("value") if isinstance(op_margin_data, dict) else op_margin_data
         if op_margin is not None and op_margin > 20:
             swot_summary["strengths"].append(f"Strong operating efficiency: {op_margin}% operating margin")
 
-    # Analyze debt for SWOT
+    # Analyze debt for SWOT (handle both dict and plain number formats)
     if debt and "error" not in debt:
-        d_to_e = debt.get("debt_to_equity")
+        d_to_e_data = debt.get("debt_to_equity")
+        d_to_e = d_to_e_data.get("value") if isinstance(d_to_e_data, dict) else d_to_e_data
         if d_to_e is not None:
             if d_to_e > 2:
                 swot_summary["threats"].append(f"High leverage: {d_to_e}x debt-to-equity")

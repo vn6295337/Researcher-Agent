@@ -270,10 +270,9 @@ async def _extract_and_emit_metrics(
         return
 
     if source == "financials":
-        financials = result.get("financials") or {}
-        debt = result.get("debt") or {}
-        # Extract temporal data with metrics
-        revenue = financials.get("revenue") or {}
+        # Result IS the financials data directly (not nested under "financials" key)
+        # Revenue has temporal data from SEC EDGAR
+        revenue = result.get("revenue") or {}
         if isinstance(revenue, dict) and revenue.get("value"):
             await emit_metric(
                 progress_callback, source, "revenue", revenue["value"],
@@ -281,10 +280,22 @@ async def _extract_and_emit_metrics(
                 fiscal_year=revenue.get("fiscal_year"),
                 form=revenue.get("form")
             )
-        net_margin = financials.get("net_margin") or financials.get("net_margin_pct")
-        if net_margin is not None:
+
+        # Net margin - now a dict with temporal data
+        net_margin = result.get("net_margin_pct") or result.get("net_margin")
+        if isinstance(net_margin, dict) and net_margin.get("value") is not None:
+            await emit_metric(
+                progress_callback, source, "net_margin", net_margin["value"],
+                end_date=net_margin.get("end_date"),
+                fiscal_year=net_margin.get("fiscal_year"),
+                form=net_margin.get("form")
+            )
+        elif isinstance(net_margin, (int, float)):
+            # Fallback for old format (plain number)
             await emit_metric(progress_callback, source, "net_margin", net_margin)
-        eps = financials.get("eps") or {}
+
+        # EPS has temporal data
+        eps = result.get("eps") or {}
         if isinstance(eps, dict) and eps.get("value"):
             await emit_metric(
                 progress_callback, source, "EPS", eps["value"],
@@ -292,8 +303,18 @@ async def _extract_and_emit_metrics(
                 fiscal_year=eps.get("fiscal_year"),
                 form=eps.get("form")
             )
+
+        # Debt metrics are in the debt sub-object from fetch_debt_metrics
+        debt = result.get("debt") or {}
         debt_to_equity = debt.get("debt_to_equity")
-        if debt_to_equity is not None:
+        if isinstance(debt_to_equity, dict) and debt_to_equity.get("value") is not None:
+            await emit_metric(
+                progress_callback, source, "debt_to_equity", debt_to_equity["value"],
+                end_date=debt_to_equity.get("end_date"),
+                fiscal_year=debt_to_equity.get("fiscal_year"),
+                form=debt_to_equity.get("form")
+            )
+        elif isinstance(debt_to_equity, (int, float)):
             await emit_metric(progress_callback, source, "debt_to_equity", debt_to_equity)
 
     elif source == "volatility":
