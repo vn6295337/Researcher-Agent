@@ -324,13 +324,20 @@ async def _extract_and_emit_metrics(
         articles = result.get("articles", [])
         if articles:
             await emit_metric(progress_callback, source, "articles_found", len(articles))
+        else:
+            await emit_metric(progress_callback, source, "status", "No recent news found")
 
     elif source == "sentiment":
+        has_data = False
         if result.get("composite_score") is not None:
             await emit_metric(progress_callback, source, "composite_score", result["composite_score"])
+            has_data = True
         metrics = result.get("metrics", {})
         if metrics.get("finnhub", {}).get("sentiment_score") is not None:
             await emit_metric(progress_callback, source, "finnhub_score", metrics["finnhub"]["sentiment_score"])
+            has_data = True
+        if not has_data:
+            await emit_metric(progress_callback, source, "status", "No sentiment data available")
 
 
 def _aggregate_swot(metrics: dict, sources_available: list) -> dict:
