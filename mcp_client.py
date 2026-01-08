@@ -367,7 +367,8 @@ async def _extract_and_emit_metrics(
             await emit_metric(progress_callback, source, "EV/EBITDA", ev_ebitda)
 
     elif source == "news":
-        articles = result.get("articles") or []
+        # News MCP server returns "results" not "articles"
+        articles = result.get("results") or result.get("articles") or []
         if articles and isinstance(articles, list) and len(articles) > 0:
             await emit_metric(progress_callback, source, "articles_found", len(articles))
         else:
