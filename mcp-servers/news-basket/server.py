@@ -8,8 +8,9 @@ Use cases:
 - Competitor analysis
 - Going concern news coverage
 
-API Documentation: https://docs.tavily.com/
-Free tier: 1,000 API credits/month
+Data Sources:
+- Tavily API: https://docs.tavily.com/ (1,000 credits/month free)
+- NYT Article Search API: https://developer.nytimes.com/ (500 req/day free)
 """
 
 import asyncio
@@ -49,6 +50,10 @@ server = Server("news-basket")
 # Tavily API configuration
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 TAVILY_BASE_URL = "https://api.tavily.com"
+
+# NYT Article Search API configuration
+NYT_API_KEY = os.getenv("NYT_API_KEY")
+NYT_BASE_URL = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
 
 
 # ============================================================
@@ -136,29 +141,153 @@ async def tavily_search(
         return {"error": str(e)}
 
 
+async def nyt_search(
+    query: str,
+    max_results: int = 5,
+    sort: str = "newest",
+    begin_date: str = None,
+    end_date: str = None,
+) -> dict:
+    """
+    Search NYT Article Search API.
+
+    Args:
+        query: Search query
+        max_results: Number of results (max 10 per page)
+        sort: "newest", "oldest", or "relevance"
+        begin_date: Filter start date (YYYYMMDD)
+        end_date: Filter end date (YYYYMMDD)
+
+    Returns:
+        Dict with articles from New York Times
+    """
+    if not NYT_API_KEY:
+        return {
+            "error": "NYT_API_KEY not configured",
+            "message": "Add NYT_API_KEY to ~/.env file. Get free key at https://developer.nytimes.com/"
+        }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            params = {
+                "api-key": NYT_API_KEY,
+                "q": query,
+                "sort": sort,
+                "page": 0,
+            }
+
+            if begin_date:
+                params["begin_date"] = begin_date
+            if end_date:
+                params["end_date"] = end_date
+
+            response = await client.get(
+                NYT_BASE_URL,
+                params=params,
+                timeout=30
+            )
+
+            if response.status_code == 429:
+                return {
+                    "error": "NYT rate limit exceeded",
+                    "message": "Rate limit: 5 req/min, 500 req/day"
+                }
+
+            if response.status_code != 200:
+                return {
+                    "error": f"NYT API error: {response.status_code}",
+                    "message": response.text
+                }
+
+            data = response.json()
+            docs = data.get("response", {}).get("docs", [])
+
+            # Format results
+            results = []
+            for doc in docs[:max_results]:
+                headline = doc.get("headline", {})
+                results.append({
+                    "title": headline.get("main", ""),
+                    "url": doc.get("web_url", ""),
+                    "content": doc.get("snippet", "") or doc.get("lead_paragraph", ""),
+                    "published_date": doc.get("pub_date", ""),
+                    "section": doc.get("section_name", ""),
+                    "source": "New York Times",
+                })
+
+            return {
+                "query": query,
+                "results": results,
+                "result_count": len(results),
+                "total_hits": data.get("response", {}).get("meta", {}).get("hits", 0),
+                "source": "NYT Article Search API",
+                "as_of": datetime.now().isoformat()
+            }
+
+    except Exception as e:
+        logger.error(f"NYT search error: {e}")
+        return {"error": str(e)}
+
+
 async def search_company_news(ticker: str, company_name: str = None) -> dict:
     """
-    Search for recent news about a company.
+    Search for recent news about a company using Tavily and NYT APIs.
+    Combines results from both sources for comprehensive coverage.
     """
     query = f"{ticker} stock news"
     if company_name:
         query = f"{company_name} ({ticker}) stock news"
 
-    result = await tavily_search(
+    # Fetch from both sources in parallel
+    tavily_task = tavily_search(
         query=query,
         search_depth="basic",
         max_results=5,
         exclude_domains=["reddit.com", "twitter.com", "x.com"],
     )
 
+    nyt_query = company_name or ticker
+    nyt_task = nyt_search(
+        query=nyt_query,
+        max_results=3,
+        sort="newest",
+    )
+
+    tavily_result, nyt_result = await asyncio.gather(tavily_task, nyt_task)
+
+    # Combine results
+    all_results = []
+    sources_used = []
+
+    # Add Tavily results
+    if "results" in tavily_result and tavily_result["results"]:
+        all_results.extend(tavily_result["results"])
+        sources_used.append("Tavily")
+
+    # Add NYT results
+    if "results" in nyt_result and nyt_result["results"]:
+        all_results.extend(nyt_result["results"])
+        sources_used.append("NYT")
+
+    # Build combined result
+    result = {
+        "query": query,
+        "answer": tavily_result.get("answer"),
+        "results": all_results,
+        "result_count": len(all_results),
+        "sources": sources_used,
+        "source": " + ".join(sources_used) if sources_used else "None",
+        "as_of": datetime.now().isoformat()
+    }
+
     # Add SWOT categorization
-    if "results" in result and result["results"]:
+    if all_results:
         swot_hints = {
             "opportunities": [],
             "threats": []
         }
 
-        for r in result["results"]:
+        for r in all_results:
             content = (r.get("content") or "").lower()
             title = (r.get("title") or "").lower()
 
@@ -260,7 +389,7 @@ async def search_competitor_news(ticker: str, competitors: list) -> dict:
 
 @server.list_tools()
 async def list_tools():
-    """List available Tavily tools."""
+    """List available news search tools (Tavily + NYT)."""
     return [
         Tool(
             name="tavily_search",
@@ -288,8 +417,33 @@ async def list_tools():
             }
         ),
         Tool(
+            name="nyt_search",
+            description="Search New York Times articles. High-quality financial journalism.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (company name, topic, etc.)"
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Number of results (1-10)",
+                        "default": 5
+                    },
+                    "sort": {
+                        "type": "string",
+                        "enum": ["newest", "oldest", "relevance"],
+                        "description": "Sort order",
+                        "default": "newest"
+                    }
+                },
+                "required": ["query"]
+            }
+        ),
+        Tool(
             name="search_company_news",
-            description="Search for recent news about a company. Returns news with SWOT hints.",
+            description="Search for recent news about a company from Tavily + NYT. Returns news with SWOT hints.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -368,6 +522,12 @@ async def call_tool(name: str, arguments: dict):
             search_depth = arguments.get("search_depth", "basic")
             max_results = arguments.get("max_results", 5)
             result = await tavily_search(query, search_depth, max_results)
+
+        elif name == "nyt_search":
+            query = arguments.get("query", "")
+            max_results = arguments.get("max_results", 5)
+            sort = arguments.get("sort", "newest")
+            result = await nyt_search(query, max_results, sort)
 
         elif name == "search_company_news":
             ticker = arguments.get("ticker", "").upper()
