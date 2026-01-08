@@ -11,6 +11,7 @@ Use cases:
 Data Sources:
 - Tavily API: https://docs.tavily.com/ (1,000 credits/month free)
 - NYT Article Search API: https://developer.nytimes.com/ (500 req/day free)
+- NewsAPI: https://newsapi.org/ (100 req/day free, 24hr delay)
 """
 
 import asyncio
@@ -54,6 +55,10 @@ TAVILY_BASE_URL = "https://api.tavily.com"
 # NYT Article Search API configuration
 NYT_API_KEY = os.getenv("NYT_API_KEY")
 NYT_BASE_URL = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
+
+# NewsAPI configuration (24hr lag on free tier)
+NEWSAPI_API_KEY = os.getenv("NEWSAPI_API_KEY")
+NEWSAPI_BASE_URL = "https://newsapi.org/v2/everything"
 
 
 # ============================================================
@@ -229,20 +234,107 @@ async def nyt_search(
         return {"error": str(e)}
 
 
+async def newsapi_search(
+    query: str,
+    max_results: int = 5,
+    sort_by: str = "publishedAt",
+    language: str = "en",
+) -> dict:
+    """
+    Search NewsAPI.org for articles.
+
+    Args:
+        query: Search query
+        max_results: Number of results (max 100)
+        sort_by: "publishedAt", "relevancy", or "popularity"
+        language: Language code (e.g., "en")
+
+    Returns:
+        Dict with articles from 150,000+ sources
+
+    Note: Free tier has 24-hour delay on articles
+    """
+    if not NEWSAPI_API_KEY:
+        return {
+            "error": "NEWSAPI_API_KEY not configured",
+            "message": "Add NEWSAPI_API_KEY to ~/.env file. Get free key at https://newsapi.org/"
+        }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            params = {
+                "apiKey": NEWSAPI_API_KEY,
+                "q": query,
+                "sortBy": sort_by,
+                "language": language,
+                "pageSize": min(max_results, 100),
+            }
+
+            response = await client.get(
+                NEWSAPI_BASE_URL,
+                params=params,
+                timeout=30
+            )
+
+            if response.status_code == 426:
+                return {
+                    "error": "NewsAPI requires paid plan for this request",
+                    "message": "Free tier limited to 24hr old articles"
+                }
+
+            if response.status_code != 200:
+                return {
+                    "error": f"NewsAPI error: {response.status_code}",
+                    "message": response.text
+                }
+
+            data = response.json()
+
+            if data.get("status") != "ok":
+                return {
+                    "error": data.get("code", "Unknown error"),
+                    "message": data.get("message", "")
+                }
+
+            # Format results
+            results = []
+            for art in data.get("articles", [])[:max_results]:
+                results.append({
+                    "title": art.get("title", ""),
+                    "url": art.get("url", ""),
+                    "content": art.get("description", "") or art.get("content", ""),
+                    "published_date": art.get("publishedAt", ""),
+                    "source": art.get("source", {}).get("name", "NewsAPI"),
+                })
+
+            return {
+                "query": query,
+                "results": results,
+                "result_count": len(results),
+                "total_hits": data.get("totalResults", 0),
+                "source": "NewsAPI",
+                "as_of": datetime.now().isoformat()
+            }
+
+    except Exception as e:
+        logger.error(f"NewsAPI search error: {e}")
+        return {"error": str(e)}
+
+
 async def search_company_news(ticker: str, company_name: str = None) -> dict:
     """
-    Search for recent news about a company using Tavily and NYT APIs.
-    Combines results from both sources for comprehensive coverage.
+    Search for recent news about a company using Tavily, NYT, and NewsAPI.
+    Combines results from all sources for comprehensive coverage.
     """
     query = f"{ticker} stock news"
     if company_name:
         query = f"{company_name} ({ticker}) stock news"
 
-    # Fetch from both sources in parallel
+    # Fetch from all sources in parallel
     tavily_task = tavily_search(
         query=query,
         search_depth="basic",
-        max_results=5,
+        max_results=4,
         exclude_domains=["reddit.com", "twitter.com", "x.com"],
     )
 
@@ -253,7 +345,16 @@ async def search_company_news(ticker: str, company_name: str = None) -> dict:
         sort="newest",
     )
 
-    tavily_result, nyt_result = await asyncio.gather(tavily_task, nyt_task)
+    newsapi_query = company_name or ticker
+    newsapi_task = newsapi_search(
+        query=newsapi_query,
+        max_results=3,
+        sort_by="publishedAt",
+    )
+
+    tavily_result, nyt_result, newsapi_result = await asyncio.gather(
+        tavily_task, nyt_task, newsapi_task
+    )
 
     # Combine results
     all_results = []
@@ -268,6 +369,11 @@ async def search_company_news(ticker: str, company_name: str = None) -> dict:
     if "results" in nyt_result and nyt_result["results"]:
         all_results.extend(nyt_result["results"])
         sources_used.append("NYT")
+
+    # Add NewsAPI results
+    if "results" in newsapi_result and newsapi_result["results"]:
+        all_results.extend(newsapi_result["results"])
+        sources_used.append("NewsAPI")
 
     # Build combined result
     result = {
