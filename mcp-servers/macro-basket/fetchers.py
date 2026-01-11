@@ -156,7 +156,7 @@ async def fetch_gdp_growth() -> dict:
         "interpretation": interpretation,
         "swot_category": swot_impact,
         "source": data["source"],
-        "as_of": datetime.now().isoformat()
+        "as_of": datetime.now().strftime("%Y-%m-%d")
     }
 
 
@@ -210,7 +210,7 @@ async def fetch_interest_rates() -> dict:
         "interpretation": interpretation,
         "swot_category": swot_impact,
         "source": data["source"],
-        "as_of": datetime.now().isoformat()
+        "as_of": datetime.now().strftime("%Y-%m-%d")
     }
 
 
@@ -298,7 +298,7 @@ async def fetch_cpi() -> dict:
         "interpretation": interpretation,
         "swot_category": swot_impact,
         "source": "FRED (Federal Reserve)",
-        "as_of": datetime.now().isoformat()
+        "as_of": datetime.now().strftime("%Y-%m-%d")
     }
 
 
@@ -352,7 +352,7 @@ async def fetch_unemployment() -> dict:
         "interpretation": interpretation,
         "swot_category": swot_impact,
         "source": data["source"],
-        "as_of": datetime.now().isoformat()
+        "as_of": datetime.now().strftime("%Y-%m-%d")
     }
 
 
@@ -412,5 +412,5 @@ async def get_full_macro_basket() -> dict:
         },
         "overall_assessment": overall,
         "swot_summary": swot_summary,
-        "generated_at": datetime.now().isoformat()
+        "generated_at": datetime.now().strftime("%Y-%m-%d")
     }

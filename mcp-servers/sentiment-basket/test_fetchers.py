@@ -24,7 +24,7 @@ for env_path in env_paths:
 from server import (
     fetch_finnhub_sentiment,
     fetch_reddit_sentiment,
-    get_full_sentiment_basket,
+    get_all_sources_sentiment,
     FINNHUB_API_KEY,
     VADER_AVAILABLE
 )
@@ -57,7 +57,7 @@ async def test_reddit(ticker: str = "AAPL"):
 async def test_full_basket(ticker: str = "AAPL", company_name: str = "Apple"):
     """Test full sentiment basket."""
     print(f"\n[Full Basket] Testing {ticker} ({company_name})")
-    result = await get_full_sentiment_basket(ticker, company_name)
+    result = await get_all_sources_sentiment(ticker, company_name)
     print_result(f"Full Sentiment Basket - {ticker}", result)
     return result
 

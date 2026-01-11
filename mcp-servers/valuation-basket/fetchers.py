@@ -200,5 +200,5 @@ async def get_full_valuation_basket(ticker: str) -> dict:
         "overall_assessment": overall,
         "swot_summary": swot_summary,
         "source": "Yahoo Finance (yfinance)",
-        "generated_at": datetime.now().isoformat()
+        "generated_at": datetime.now().strftime("%Y-%m-%d")
     }

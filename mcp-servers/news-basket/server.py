@@ -18,9 +18,26 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+
+def normalize_date(date_str: str) -> str:
+    """Extract date-only (YYYY-MM-DD) from various datetime formats."""
+    if not date_str:
+        return None
+    # Handle ISO format with/without timezone
+    if "T" in date_str:
+        return date_str.split("T")[0]
+    # Already date-only
+    if len(date_str) == 10:
+        return date_str
+    return date_str[:10] if len(date_str) >= 10 else date_str
 from pathlib import Path
 from typing import Optional
+
+# Import company name normalization and domain filters from local config
+from config.company_name_filters import clean_company_name
+from config.domain_filters import NEWS_DOMAINS, NYT_NEWS_DESKS, NEWSAPI_DOMAINS
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -72,6 +89,7 @@ async def tavily_search(
     include_domains: list = None,
     exclude_domains: list = None,
     include_answer: bool = True,
+    days: int = None,
 ) -> dict:
     """
     Execute Tavily search.
@@ -83,6 +101,7 @@ async def tavily_search(
         include_domains: Limit to specific domains
         exclude_domains: Exclude specific domains
         include_answer: Include AI-generated answer
+        days: Limit results to last N days (optional)
     """
     if not TAVILY_API_KEY:
         return {
@@ -105,6 +124,8 @@ async def tavily_search(
                 payload["include_domains"] = include_domains
             if exclude_domains:
                 payload["exclude_domains"] = exclude_domains
+            if days:
+                payload["days"] = days
 
             response = await client.post(
                 f"{TAVILY_BASE_URL}/search",
@@ -138,7 +159,7 @@ async def tavily_search(
                 "result_count": len(results),
                 "search_depth": search_depth,
                 "source": "Tavily",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
 
     except Exception as e:
@@ -152,6 +173,7 @@ async def nyt_search(
     sort: str = "newest",
     begin_date: str = None,
     end_date: str = None,
+    news_desks: list[str] = None,
 ) -> dict:
     """
     Search NYT Article Search API.
@@ -162,6 +184,7 @@ async def nyt_search(
         sort: "newest", "oldest", or "relevance"
         begin_date: Filter start date (YYYYMMDD)
         end_date: Filter end date (YYYYMMDD)
+        news_desks: Filter by news desk (e.g., ["Business", "Technology"])
 
     Returns:
         Dict with articles from New York Times
@@ -185,6 +208,10 @@ async def nyt_search(
                 params["begin_date"] = begin_date
             if end_date:
                 params["end_date"] = end_date
+            if news_desks:
+                # Filter by news desk: fq=news_desk:("Business" "Technology")
+                desks_str = " ".join(f'"{desk}"' for desk in news_desks)
+                params["fq"] = f"news_desk:({desks_str})"
 
             response = await client.get(
                 NYT_BASE_URL,
@@ -205,7 +232,7 @@ async def nyt_search(
                 }
 
             data = response.json()
-            docs = data.get("response", {}).get("docs", [])
+            docs = data.get("response", {}).get("docs") or []
 
             # Format results
             results = []
@@ -226,7 +253,7 @@ async def nyt_search(
                 "result_count": len(results),
                 "total_hits": data.get("response", {}).get("meta", {}).get("hits", 0),
                 "source": "NYT Article Search API",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
 
     except Exception as e:
@@ -239,6 +266,7 @@ async def newsapi_search(
     max_results: int = 5,
     sort_by: str = "publishedAt",
     language: str = "en",
+    domains: str = None,
 ) -> dict:
     """
     Search NewsAPI.org for articles.
@@ -269,6 +297,8 @@ async def newsapi_search(
                 "language": language,
                 "pageSize": min(max_results, 100),
             }
+            if domains:
+                params["domains"] = domains
 
             response = await client.get(
                 NEWSAPI_BASE_URL,
@@ -313,7 +343,7 @@ async def newsapi_search(
                 "result_count": len(results),
                 "total_hits": data.get("totalResults", 0),
                 "source": "NewsAPI",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
 
     except Exception as e:
@@ -321,35 +351,51 @@ async def newsapi_search(
         return {"error": str(e)}
 
 
-async def search_company_news(ticker: str, company_name: str = None) -> dict:
+async def get_all_sources_news(ticker: str, company_name: str = None) -> dict:
     """
     Search for recent news about a company using Tavily, NYT, and NewsAPI.
     Combines results from all sources for comprehensive coverage.
     """
-    query = f"{ticker} stock news"
+    # Build specific queries for better relevance
+    base_query = f"{ticker} stock news"
     if company_name:
-        query = f"{company_name} ({ticker}) stock news"
+        base_query = f"{company_name} ({ticker}) stock news"
 
-    # Fetch from all sources in parallel
+    # Tavily query - general search
+    tavily_query = base_query
+
+    # NYT query - cleaned company name + "stock" for disambiguation (e.g., Apple vs apple fruit)
+    nyt_query = f"{clean_company_name(company_name or ticker)} stock"
+
+    # NewsAPI query - ticker symbol helps filter
+    newsapi_query = f"{company_name or ticker} {ticker} stock"
+
+    # Calculate 7-day lookback
+    seven_days_ago = (datetime.now() - timedelta(days=7)).strftime("%Y%m%d")
+
+    # Fetch from all sources in parallel (limited to business/finance/tech domains)
     tavily_task = tavily_search(
-        query=query,
+        query=tavily_query,
         search_depth="basic",
         max_results=4,
+        include_domains=NEWS_DOMAINS,
         exclude_domains=["reddit.com", "twitter.com", "x.com"],
+        days=7,
     )
 
-    nyt_query = company_name or ticker
     nyt_task = nyt_search(
         query=nyt_query,
-        max_results=3,
-        sort="newest",
+        max_results=5,
+        sort="relevance",
+        begin_date=seven_days_ago,
+        news_desks=NYT_NEWS_DESKS,
     )
 
-    newsapi_query = company_name or ticker
     newsapi_task = newsapi_search(
         query=newsapi_query,
         max_results=3,
         sort_by="publishedAt",
+        domains=NEWSAPI_DOMAINS,
     )
 
     tavily_result, nyt_result, newsapi_result = await asyncio.gather(
@@ -360,54 +406,51 @@ async def search_company_news(ticker: str, company_name: str = None) -> dict:
     all_results = []
     sources_used = []
 
-    # Add Tavily results
+    # Add Tavily results (inject source name into each article)
     if "results" in tavily_result and tavily_result["results"]:
+        for article in tavily_result["results"]:
+            article["source"] = article.get("source") or "Tavily"
         all_results.extend(tavily_result["results"])
         sources_used.append("Tavily")
 
-    # Add NYT results
+    # Add NYT results (inject source name into each article)
     if "results" in nyt_result and nyt_result["results"]:
+        for article in nyt_result["results"]:
+            article["source"] = article.get("source") or "NYT"
         all_results.extend(nyt_result["results"])
         sources_used.append("NYT")
 
-    # Add NewsAPI results
+    # Add NewsAPI results (inject source name into each article)
     if "results" in newsapi_result and newsapi_result["results"]:
+        for article in newsapi_result["results"]:
+            article["source"] = article.get("source") or "NewsAPI"
         all_results.extend(newsapi_result["results"])
         sources_used.append("NewsAPI")
 
-    # Build combined result
-    result = {
-        "query": query,
-        "answer": tavily_result.get("answer"),
-        "results": all_results,
-        "result_count": len(all_results),
-        "sources": sources_used,
-        "source": " + ".join(sources_used) if sources_used else "None",
-        "as_of": datetime.now().isoformat()
+    # Sort by date (most recent first) - deduplication applied downstream
+    all_results.sort(key=lambda x: x.get("published_date", "") or "", reverse=True)
+
+    # Build normalized content_analysis schema
+    items = []
+    for article in all_results:
+        items.append({
+            "title": article.get("title"),
+            "content": article.get("content") or article.get("snippet"),
+            "url": article.get("url"),
+            "datetime": normalize_date(article.get("published_date")),
+            "source": article.get("source"),
+        })
+
+    return {
+        "group": "content_analysis",
+        "ticker": ticker.upper(),
+        "query": base_query,
+        "items": items,
+        "item_count": len(items),
+        "sources_used": sources_used,
+        "source": "news-basket",
+        "as_of": datetime.now().strftime("%Y-%m-%d")
     }
-
-    # Add SWOT categorization
-    if all_results:
-        swot_hints = {
-            "opportunities": [],
-            "threats": []
-        }
-
-        for r in all_results:
-            content = (r.get("content") or "").lower()
-            title = (r.get("title") or "").lower()
-
-            # Look for positive signals
-            if any(kw in content or kw in title for kw in ["upgrade", "beat", "growth", "strong", "positive"]):
-                swot_hints["opportunities"].append(r["title"][:80])
-
-            # Look for negative signals
-            if any(kw in content or kw in title for kw in ["downgrade", "miss", "decline", "weak", "concern", "warning"]):
-                swot_hints["threats"].append(r["title"][:80])
-
-        result["swot_hints"] = swot_hints
-
-    return result
 
 
 async def search_going_concern_news(ticker: str, company_name: str = None) -> dict:
@@ -449,10 +492,6 @@ async def search_going_concern_news(ticker: str, company_name: str = None) -> di
             "risk_level": risk_level,
             "signals_found": len(risk_signals),
             "signals": risk_signals[:5],
-        }
-
-        result["swot_implications"] = {
-            "threats": [f"News coverage of financial distress ({len(risk_signals)} articles)"] if risk_signals else []
         }
 
     return result
@@ -548,7 +587,7 @@ async def list_tools():
             }
         ),
         Tool(
-            name="search_company_news",
+            name="get_all_sources_news",
             description="Search for recent news about a company from Tavily + NYT. Returns news with SWOT hints.",
             inputSchema={
                 "type": "object",
@@ -619,49 +658,93 @@ async def list_tools():
     ]
 
 
+# Global timeout for all tool operations (seconds)
+TOOL_TIMEOUT = 45.0
+
+
+async def _execute_tool_with_timeout(name: str, arguments: dict) -> dict:
+    """Execute a tool with timeout. Returns result dict or error dict."""
+    if name == "tavily_search":
+        query = arguments.get("query", "")
+        search_depth = arguments.get("search_depth", "basic")
+        max_results = arguments.get("max_results", 5)
+        return await tavily_search(query, search_depth, max_results)
+    elif name == "nyt_search":
+        query = arguments.get("query", "")
+        max_results = arguments.get("max_results", 5)
+        sort = arguments.get("sort", "newest")
+        return await nyt_search(query, max_results, sort)
+    elif name == "get_all_sources_news":
+        ticker = arguments.get("ticker", "").upper()
+        company_name = arguments.get("company_name")
+        return await get_all_sources_news(ticker, company_name)
+    elif name == "search_going_concern_news":
+        ticker = arguments.get("ticker", "").upper()
+        company_name = arguments.get("company_name")
+        return await search_going_concern_news(ticker, company_name)
+    elif name == "search_industry_trends":
+        industry = arguments.get("industry", "")
+        return await search_industry_trends(industry)
+    elif name == "search_competitor_news":
+        ticker = arguments.get("ticker", "").upper()
+        competitors = arguments.get("competitors", [])
+        return await search_competitor_news(ticker, competitors)
+    else:
+        return {"error": f"Unknown tool: {name}"}
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
-    """Handle tool invocations."""
+    """
+    Handle tool invocations with GUARANTEED JSON-RPC response.
+
+    This function ALWAYS returns a valid TextContent response, even if:
+    - External APIs timeout
+    - Exceptions occur during processing
+    - Any unexpected error happens
+
+    This ensures MCP protocol compliance and prevents client hangs.
+    """
     try:
-        if name == "tavily_search":
-            query = arguments.get("query", "")
-            search_depth = arguments.get("search_depth", "basic")
-            max_results = arguments.get("max_results", 5)
-            result = await tavily_search(query, search_depth, max_results)
+        # Execute tool with global timeout
+        try:
+            result = await asyncio.wait_for(
+                _execute_tool_with_timeout(name, arguments),
+                timeout=TOOL_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            ticker = arguments.get("ticker", "")
+            logger.error(f"Tool {name} timed out after {TOOL_TIMEOUT}s for {ticker}")
+            result = {
+                "error": f"Tool execution timed out after {TOOL_TIMEOUT} seconds",
+                "ticker": ticker,
+                "tool": name,
+                "source": "news-basket",
+                "fallback": True
+            }
 
-        elif name == "nyt_search":
-            query = arguments.get("query", "")
-            max_results = arguments.get("max_results", 5)
-            sort = arguments.get("sort", "newest")
-            result = await nyt_search(query, max_results, sort)
+        # Ensure result is JSON serializable
+        return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
-        elif name == "search_company_news":
-            ticker = arguments.get("ticker", "").upper()
-            company_name = arguments.get("company_name")
-            result = await search_company_news(ticker, company_name)
-
-        elif name == "search_going_concern_news":
-            ticker = arguments.get("ticker", "").upper()
-            company_name = arguments.get("company_name")
-            result = await search_going_concern_news(ticker, company_name)
-
-        elif name == "search_industry_trends":
-            industry = arguments.get("industry", "")
-            result = await search_industry_trends(industry)
-
-        elif name == "search_competitor_news":
-            ticker = arguments.get("ticker", "").upper()
-            competitors = arguments.get("competitors", [])
-            result = await search_competitor_news(ticker, competitors)
-
-        else:
-            return [TextContent(type="text", text=f"Unknown tool: {name}")]
-
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON serialization error for {name}: {e}")
+        return [TextContent(type="text", text=json.dumps({
+            "error": f"JSON serialization failed: {str(e)}",
+            "ticker": arguments.get("ticker", ""),
+            "tool": name,
+            "source": "news-basket"
+        }))]
 
     except Exception as e:
-        logger.error(f"Tool error {name}: {e}")
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        # Catch-all: ALWAYS return valid JSON-RPC response
+        logger.error(f"Unexpected error in {name}: {type(e).__name__}: {e}")
+        return [TextContent(type="text", text=json.dumps({
+            "error": f"{type(e).__name__}: {str(e)}",
+            "ticker": arguments.get("ticker", ""),
+            "tool": name,
+            "source": "news-basket",
+            "fallback": True
+        }))]
 
 
 # ============================================================

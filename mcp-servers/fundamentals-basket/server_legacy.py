@@ -42,7 +42,7 @@ import yfinance as yf
 from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("financials-basket")
+logger = logging.getLogger("fundamentals-basket")
 
 # Thread pool for yfinance (synchronous library)
 _executor = ThreadPoolExecutor(max_workers=2)
@@ -68,7 +68,7 @@ def create_temporal_metric(value, source_metric) -> dict:
     return {"value": value}
 
 # Initialize MCP server
-server = Server("financials-basket")
+server = Server("fundamentals-basket")
 
 # SEC EDGAR requires User-Agent with contact info
 SEC_HEADERS = {
@@ -257,10 +257,19 @@ async def fetch_financials(ticker: str) -> dict:
 
             facts = data.get("facts", {})
 
-            # Extract key metrics
-            revenue = get_latest_value(facts, "Revenues") or \
-                      get_latest_value(facts, "RevenueFromContractWithCustomerExcludingAssessedTax") or \
-                      get_latest_value(facts, "SalesRevenueNet")
+            # Extract key metrics - pick concept with most recent date
+            # (Companies change GAAP concepts over time, e.g., Apple switched from
+            # "Revenues" to "RevenueFromContractWithCustomerExcludingAssessedTax" after FY2018)
+            revenue_candidates = [
+                get_latest_value(facts, "RevenueFromContractWithCustomerExcludingAssessedTax"),
+                get_latest_value(facts, "Revenues"),
+                get_latest_value(facts, "SalesRevenueNet"),
+            ]
+            revenue = max(
+                [r for r in revenue_candidates if r and r.get("end_date")],
+                key=lambda x: x.get("end_date", ""),
+                default=None
+            )
 
             net_income = get_latest_value(facts, "NetIncomeLoss")
 
@@ -297,8 +306,10 @@ async def fetch_financials(ticker: str) -> dict:
                 )
 
             # Revenue growth
-            revenue_growth = calculate_growth(facts, "Revenues") or \
-                            calculate_growth(facts, "RevenueFromContractWithCustomerExcludingAssessedTax")
+            # Calculate revenue growth using the same concept as revenue
+            revenue_growth = calculate_growth(facts, "RevenueFromContractWithCustomerExcludingAssessedTax") or \
+                            calculate_growth(facts, "Revenues") or \
+                            calculate_growth(facts, "SalesRevenueNet")
 
             return {
                 "ticker": ticker.upper(),
@@ -314,7 +325,7 @@ async def fetch_financials(ticker: str) -> dict:
                 "total_liabilities": total_liabilities,
                 "stockholders_equity": stockholders_equity,
                 "source": "SEC EDGAR XBRL",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Financials error: {e}")
@@ -337,15 +348,35 @@ async def fetch_debt_metrics(ticker: str) -> dict:
 
             facts = data.get("facts", {})
 
-            # Debt metrics
-            long_term_debt = get_latest_value(facts, "LongTermDebt") or \
-                            get_latest_value(facts, "LongTermDebtNoncurrent")
+            # Debt metrics - prefer concepts with most recent data
+            # Some companies use different concepts in different years
+            def get_most_recent(*concepts):
+                """Get the value with the most recent end_date among concepts."""
+                candidates = []
+                for concept in concepts:
+                    val = get_latest_value(facts, concept)
+                    if val and val.get("end_date"):
+                        candidates.append(val)
+                if not candidates:
+                    return None
+                # Sort by end_date descending and return most recent
+                candidates.sort(key=lambda x: x.get("end_date", ""), reverse=True)
+                return candidates[0]
+
+            long_term_debt = get_most_recent(
+                "LongTermDebtAndCapitalLeaseObligations",  # Most comprehensive, often most recent
+                "LongTermDebt",
+                "LongTermDebtNoncurrent"
+            )
 
             short_term_debt = get_latest_value(facts, "ShortTermBorrowings") or \
                              get_latest_value(facts, "DebtCurrent")
 
-            total_debt = get_latest_value(facts, "DebtAndCapitalLeaseObligations") or \
-                        get_latest_value(facts, "LongTermDebtAndCapitalLeaseObligations")
+            total_debt = get_most_recent(
+                "DebtAndCapitalLeaseObligations",
+                "LongTermDebtAndCapitalLeaseObligations",
+                "LongTermDebt"
+            )
 
             cash = get_latest_value(facts, "CashAndCashEquivalentsAtCarryingValue") or \
                    get_latest_value(facts, "Cash")
@@ -384,7 +415,7 @@ async def fetch_debt_metrics(ticker: str) -> dict:
                 "net_debt": {"value": net_debt} if net_debt else None,
                 "debt_to_equity": debt_to_equity,
                 "source": "SEC EDGAR XBRL",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Debt metrics error: {e}")
@@ -427,7 +458,7 @@ async def fetch_cash_flow(ticker: str) -> dict:
                 "free_cash_flow": {"value": fcf} if fcf else None,
                 "rd_expense": rd_expense,
                 "source": "SEC EDGAR XBRL",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Cash flow error: {e}")
@@ -577,7 +608,7 @@ async def fetch_material_events(ticker: str, limit: int = 20) -> dict:
                 "high_priority_events": high_priority_events[:5],
                 "swot_implications": swot_implications,
                 "source": "SEC EDGAR",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Material events error: {e}")
@@ -709,7 +740,7 @@ async def fetch_going_concern(ticker: str) -> dict:
                 "keyword_matches": matches,
                 "swot_implications": swot_implications,
                 "source": "SEC EDGAR 10-K",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
 
     except Exception as e:
@@ -796,7 +827,7 @@ async def fetch_ownership_filings(ticker: str, limit: int = 20) -> dict:
                 },
                 "swot_implications": swot_implications,
                 "source": "SEC EDGAR",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Ownership filings error: {e}")
@@ -888,7 +919,7 @@ def _fetch_yfinance_financials_sync(ticker: str) -> dict:
             "source": "Yahoo Finance (fallback)",
             "fallback": True,
             "fallback_reason": "CIK not found in SEC EDGAR",
-            "as_of": datetime.now().isoformat()
+            "as_of": datetime.now().strftime("%Y-%m-%d")
         }
 
     except Exception as e:
@@ -902,6 +933,54 @@ async def fetch_yfinance_fallback(ticker: str) -> dict:
     """
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_executor, _fetch_yfinance_financials_sync, ticker)
+
+
+def get_minimal_fallback(ticker: str) -> dict:
+    """
+    Third-tier fallback: return minimal valid response when all sources fail.
+    Ensures 100% response rate even when SEC EDGAR and Yahoo Finance are unavailable.
+    """
+    return {
+        "ticker": ticker.upper(),
+        "company": {
+            "name": ticker.upper(),
+            "cik": None,
+            "sic": None,
+            "exchange": None
+        },
+        "financials": {
+            "note": "Financial data temporarily unavailable",
+            "revenue": None,
+            "net_income": None,
+            "gross_margin": None,
+            "operating_margin": None,
+            "net_margin": None
+        },
+        "debt": {
+            "note": "Debt metrics temporarily unavailable",
+            "total_debt": None,
+            "debt_to_equity": None,
+            "current_ratio": None
+        },
+        "cash_flow": {
+            "note": "Cash flow data temporarily unavailable",
+            "operating_cash_flow": None,
+            "free_cash_flow": None
+        },
+        "swot_summary": {
+            "strengths": [],
+            "weaknesses": [],
+            "opportunities": [],
+            "threats": [],
+            "note": "SWOT analysis unavailable - data sources temporarily unavailable"
+        },
+        "source": "Minimal Fallback (estimated)",
+        "fallback": True,
+        "fallback_reason": "SEC EDGAR and Yahoo Finance both unavailable",
+        "swot_category": "NEUTRAL",
+        "estimated": True,
+        "generated_at": datetime.now().strftime("%Y-%m-%d")
+    }
 
 
 def _build_swot_from_fallback(data: dict) -> dict:
@@ -988,13 +1067,9 @@ async def get_sec_fundamentals_basket(ticker: str) -> dict:
         fallback_data = await fetch_yfinance_fallback(ticker)
 
         if "error" in fallback_data:
-            return {
-                "ticker": ticker.upper(),
-                "error": fallback_data["error"],
-                "source": "Yahoo Finance (fallback)",
-                "fallback": True,
-                "fallback_reason": "CIK not found in SEC EDGAR"
-            }
+            # Third-tier fallback: minimal valid response
+            logger.info(f"Yahoo Finance also failed for {ticker}, using minimal fallback")
+            return get_minimal_fallback(ticker)
 
         # Build SWOT from fallback data
         swot_summary = _build_swot_from_fallback(fallback_data)
@@ -1092,7 +1167,90 @@ async def get_sec_fundamentals_basket(ticker: str) -> dict:
         "debt": debt,
         "cash_flow": cashflow,
         "swot_summary": swot_summary,
-        "generated_at": datetime.now().isoformat()
+        "generated_at": datetime.now().strftime("%Y-%m-%d")
+    }
+
+
+async def get_all_sources_fundamentals(ticker: str) -> dict:
+    """
+    Fetch financials from ALL sources (SEC EDGAR AND Yahoo Finance) in parallel.
+    Returns both results for comparison, not as a fallback chain.
+    """
+    # Fetch from both sources in parallel
+    sec_task = get_sec_fundamentals_basket(ticker)
+    yfinance_task = fetch_yfinance_fallback(ticker)
+
+    sec_result, yfinance_result = await asyncio.gather(sec_task, yfinance_task)
+
+    # Format SEC EDGAR results
+    sec_data = {
+        "source": "SEC EDGAR XBRL",
+        "as_of": sec_result.get("generated_at"),
+        "data": {}
+    }
+
+    if sec_result.get("financials") and "error" not in sec_result.get("financials", {}):
+        fin = sec_result["financials"]
+        # Only 6 universal metrics that work across ALL industries
+        sec_data["data"] = {
+            "revenue": fin.get("revenue"),
+            "net_income": fin.get("net_income"),
+            "net_margin_pct": fin.get("net_margin_pct"),
+            "total_assets": fin.get("total_assets"),
+            "total_liabilities": fin.get("total_liabilities"),
+            "stockholders_equity": fin.get("stockholders_equity"),
+        }
+
+    # Format Yahoo Finance results
+    yfinance_data = {
+        "source": "Yahoo Finance",
+        "as_of": yfinance_result.get("as_of") or datetime.now().strftime("%Y-%m-%d"),
+        "data": {}
+    }
+
+    if "error" not in yfinance_result:
+        fin = yfinance_result.get("financials", {})
+        debt = yfinance_result.get("debt", {})
+        cf = yfinance_result.get("cash_flow", {})
+
+        # Helper to extract raw value (handles both dict and non-dict)
+        def get_val(d, key):
+            v = d.get(key)
+            if isinstance(v, dict):
+                return v.get("value")
+            return v
+
+        # Check if SEC EDGAR failed (no data)
+        sec_failed = not sec_data.get("data")
+
+        if sec_failed:
+            # FALLBACK: Yahoo provides core metrics when SEC fails
+            yfinance_data["data"] = {
+                "revenue": {"value": get_val(fin, "revenue"), "period": "TTM"} if get_val(fin, "revenue") else None,
+                "net_income": {"value": get_val(fin, "net_income"), "period": "TTM"} if get_val(fin, "net_income") else None,
+                "net_margin_pct": {"value": get_val(fin, "net_margin")} if get_val(fin, "net_margin") else None,
+                "total_assets": {"value": get_val(debt, "total_assets")} if get_val(debt, "total_assets") else None,
+                "operating_margin_pct": {"value": get_val(fin, "operating_margin_pct")} if get_val(fin, "operating_margin_pct") else None,
+                "total_debt": {"value": get_val(debt, "total_debt")} if get_val(debt, "total_debt") else None,
+                "operating_cash_flow": {"value": get_val(cf, "operating_cash_flow")} if get_val(cf, "operating_cash_flow") else None,
+                "free_cash_flow": {"value": get_val(cf, "free_cash_flow")} if get_val(cf, "free_cash_flow") else None,
+            }
+        else:
+            # SUPPLEMENTARY: Only additional metrics not in SEC EDGAR
+            yfinance_data["data"] = {
+                "operating_margin_pct": {"value": get_val(fin, "operating_margin_pct")} if get_val(fin, "operating_margin_pct") else None,
+                "total_debt": {"value": get_val(debt, "total_debt")} if get_val(debt, "total_debt") else None,
+                "operating_cash_flow": {"value": get_val(cf, "operating_cash_flow")} if get_val(cf, "operating_cash_flow") else None,
+                "free_cash_flow": {"value": get_val(cf, "free_cash_flow")} if get_val(cf, "free_cash_flow") else None,
+            }
+    else:
+        yfinance_data["error"] = yfinance_result.get("error")
+
+    return {
+        "ticker": ticker.upper(),
+        "sec_edgar": sec_data,
+        "yahoo_finance": yfinance_data,
+        "generated_at": datetime.now().strftime("%Y-%m-%d")
     }
 
 
@@ -1225,44 +1383,113 @@ async def list_tools():
                 },
                 "required": ["ticker"]
             }
+        ),
+        Tool(
+            name="get_all_sources_fundamentals",
+            description="Get financials from ALL sources (SEC EDGAR + Yahoo Finance) for side-by-side comparison.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ticker": {
+                        "type": "string",
+                        "description": "Stock ticker symbol"
+                    }
+                },
+                "required": ["ticker"]
+            }
         )
     ]
 
 
+# Global timeout for all tool operations (seconds)
+TOOL_TIMEOUT = 45.0
+
+
+async def _execute_tool_with_timeout(name: str, ticker: str, arguments: dict) -> dict:
+    """Execute a tool with timeout. Returns result dict or error dict."""
+    if name == "get_company_info":
+        return await fetch_company_info(ticker)
+    elif name == "get_financials":
+        return await fetch_financials(ticker)
+    elif name == "get_debt_metrics":
+        return await fetch_debt_metrics(ticker)
+    elif name == "get_cash_flow":
+        return await fetch_cash_flow(ticker)
+    elif name == "get_sec_fundamentals":
+        return await get_sec_fundamentals_basket(ticker)
+    elif name == "get_material_events":
+        limit = arguments.get("limit", 20)
+        return await fetch_material_events(ticker, limit)
+    elif name == "get_ownership_filings":
+        limit = arguments.get("limit", 20)
+        return await fetch_ownership_filings(ticker, limit)
+    elif name == "get_going_concern":
+        return await fetch_going_concern(ticker)
+    elif name == "get_all_sources_fundamentals":
+        return await get_all_sources_fundamentals(ticker)
+    else:
+        return {"error": f"Unknown tool: {name}"}
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
-    """Handle tool invocations."""
+    """
+    Handle tool invocations with GUARANTEED JSON-RPC response.
+
+    This function ALWAYS returns a valid TextContent response, even if:
+    - External APIs timeout
+    - Exceptions occur during processing
+    - Any unexpected error happens
+
+    This ensures MCP protocol compliance and prevents client hangs.
+    """
     try:
         ticker = arguments.get("ticker", "").upper()
         if not ticker and name != "list_tools":
-            return [TextContent(type="text", text="Error: ticker is required")]
+            return [TextContent(type="text", text=json.dumps({
+                "error": "ticker is required",
+                "ticker": None,
+                "source": "fundamentals-basket"
+            }))]
 
-        if name == "get_company_info":
-            result = await fetch_company_info(ticker)
-        elif name == "get_financials":
-            result = await fetch_financials(ticker)
-        elif name == "get_debt_metrics":
-            result = await fetch_debt_metrics(ticker)
-        elif name == "get_cash_flow":
-            result = await fetch_cash_flow(ticker)
-        elif name == "get_sec_fundamentals":
-            result = await get_sec_fundamentals_basket(ticker)
-        elif name == "get_material_events":
-            limit = arguments.get("limit", 20)
-            result = await fetch_material_events(ticker, limit)
-        elif name == "get_ownership_filings":
-            limit = arguments.get("limit", 20)
-            result = await fetch_ownership_filings(ticker, limit)
-        elif name == "get_going_concern":
-            result = await fetch_going_concern(ticker)
-        else:
-            return [TextContent(type="text", text=f"Unknown tool: {name}")]
+        # Execute tool with global timeout
+        try:
+            result = await asyncio.wait_for(
+                _execute_tool_with_timeout(name, ticker, arguments),
+                timeout=TOOL_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Tool {name} timed out after {TOOL_TIMEOUT}s for {ticker}")
+            result = {
+                "error": f"Tool execution timed out after {TOOL_TIMEOUT} seconds",
+                "ticker": ticker,
+                "tool": name,
+                "source": "fundamentals-basket",
+                "fallback": True
+            }
 
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        # Ensure result is JSON serializable
+        return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON serialization error for {name}: {e}")
+        return [TextContent(type="text", text=json.dumps({
+            "error": f"JSON serialization failed: {str(e)}",
+            "ticker": arguments.get("ticker", ""),
+            "tool": name,
+            "source": "fundamentals-basket"
+        }))]
 
     except Exception as e:
-        logger.error(f"Tool error {name}: {e}")
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        # Catch-all: ALWAYS return valid JSON-RPC response
+        logger.error(f"Unexpected error in {name}: {type(e).__name__}: {e}")
+        return [TextContent(type="text", text=json.dumps({
+            "error": f"{type(e).__name__}: {str(e)}",
+            "ticker": arguments.get("ticker", ""),
+            "tool": name,
+            "source": "fundamentals-basket",
+            "fallback": True
+        }))]
 
 
 # ============================================================

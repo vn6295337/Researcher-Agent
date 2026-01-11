@@ -1,0 +1,210 @@
+{
+  "total": 30,
+  "success_rate": 0.9,
+  "fallback_rate": 0.16666666666666666,
+  "failure_rate": 0.1,
+  "by_category": {
+    "success": 22,
+    "partial": 0,
+    "fallback": 5,
+    "transient": 0,
+    "persistent": 0,
+    "hard_failure": 3,
+    "rate_limited": 0,
+    "timeout": 0,
+    "hf_dependency": 0,
+    "cold_start": 0,
+    "unknown": 0
+  },
+  "by_server": {
+    "financials-basket": {
+      "success": 4,
+      "partial": 0,
+      "fallback": 0,
+      "transient": 0,
+      "persistent": 0,
+      "hard_failure": 1,
+      "rate_limited": 0,
+      "timeout": 0,
+      "hf_dependency": 0,
+      "cold_start": 0,
+      "unknown": 0
+    },
+    "valuation-basket": {
+      "success": 4,
+      "partial": 0,
+      "fallback": 0,
+      "transient": 0,
+      "persistent": 0,
+      "hard_failure": 1,
+      "rate_limited": 0,
+      "timeout": 0,
+      "hf_dependency": 0,
+      "cold_start": 0,
+      "unknown": 0
+    },
+    "volatility-basket": {
+      "success": 4,
+      "partial": 0,
+      "fallback": 0,
+      "transient": 0,
+      "persistent": 0,
+      "hard_failure": 1,
+      "rate_limited": 0,
+      "timeout": 0,
+      "hf_dependency": 0,
+      "cold_start": 0,
+      "unknown": 0
+    },
+    "macro-basket": {
+      "success": 5,
+      "partial": 0,
+      "fallback": 0,
+      "transient": 0,
+      "persistent": 0,
+      "hard_failure": 0,
+      "rate_limited": 0,
+      "timeout": 0,
+      "hf_dependency": 0,
+      "cold_start": 0,
+      "unknown": 0
+    },
+    "news-basket": {
+      "success": 5,
+      "partial": 0,
+      "fallback": 0,
+      "transient": 0,
+      "persistent": 0,
+      "hard_failure": 0,
+      "rate_limited": 0,
+      "timeout": 0,
+      "hf_dependency": 0,
+      "cold_start": 0,
+      "unknown": 0
+    },
+    "sentiment-basket": {
+      "success": 0,
+      "partial": 0,
+      "fallback": 5,
+      "transient": 0,
+      "persistent": 0,
+      "hard_failure": 0,
+      "rate_limited": 0,
+      "timeout": 0,
+      "hf_dependency": 0,
+      "cold_start": 0,
+      "unknown": 0
+    }
+  },
+  "latency_p50": 13095.458244002657,
+  "latency_p95": 40498.139962001005,
+  "latency_p99": 41803.10635000933,
+  "test_config": {
+    "batch_size": 5,
+    "sampling_strategy": "uniform",
+    "servers": [
+      "financials-basket",
+      "valuation-basket",
+      "volatility-basket",
+      "macro-basket",
+      "news-basket",
+      "sentiment-basket"
+    ],
+    "seed": 42
+  },
+  "start_time": "2026-01-08T09:47:24.629736Z",
+  "end_time": "2026-01-08T09:50:22.083041Z",
+  "circuit_breaker_status": {
+    "financials-basket": {
+      "name": "financials-basket",
+      "state": "closed",
+      "failure_count": 0,
+      "success_count": 0,
+      "time_in_state": 177.45344851800473,
+      "last_failure": 256776.727346406
+    },
+    "valuation-basket": {
+      "name": "valuation-basket",
+      "state": "closed",
+      "failure_count": 0,
+      "success_count": 0,
+      "time_in_state": 177.45345394100877,
+      "last_failure": 256773.135292402
+    },
+    "volatility-basket": {
+      "name": "volatility-basket",
+      "state": "closed",
+      "failure_count": 0,
+      "success_count": 0,
+      "time_in_state": 177.4534553049889,
+      "last_failure": 256845.206840537
+    },
+    "macro-basket": {
+      "name": "macro-basket",
+      "state": "closed",
+      "failure_count": 0,
+      "success_count": 0,
+      "time_in_state": 177.45345828298014,
+      "last_failure": null
+    },
+    "news-basket": {
+      "name": "news-basket",
+      "state": "closed",
+      "failure_count": 0,
+      "success_count": 0,
+      "time_in_state": 177.4534592970158,
+      "last_failure": null
+    },
+    "sentiment-basket": {
+      "name": "sentiment-basket",
+      "state": "closed",
+      "failure_count": 0,
+      "success_count": 0,
+      "time_in_state": 177.45345990499482,
+      "last_failure": null
+    }
+  },
+  "rate_limiter_status": {
+    "limiters": {
+      "sec_edgar": {
+        "type": "token_bucket",
+        "available": 10,
+        "capacity": 10
+      },
+      "yahoo_finance": {
+        "type": "token_bucket",
+        "available": 20,
+        "capacity": 20
+      },
+      "finnhub": {
+        "type": "token_bucket",
+        "available": 5,
+        "capacity": 5
+      },
+      "fred": {
+        "type": "sliding_window",
+        "used": 4,
+        "max": 120
+      },
+      "reddit": {
+        "type": "sliding_window",
+        "used": 0,
+        "max": 100
+      }
+    },
+    "quotas": {
+      "nyt": {
+        "remaining": 500,
+        "daily_limit": 500
+      },
+      "newsapi": {
+        "remaining": 100,
+        "daily_limit": 100
+      },
+      "tavily": {
+        "remaining": 28,
+        "daily_limit": 33
+      }
+    }
+  }
+}

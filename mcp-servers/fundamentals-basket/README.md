@@ -5,7 +5,7 @@ MCP server for fetching fundamental financial data from SEC EDGAR XBRL.
 ## Installation
 
 ```bash
-cd mcp-servers/financials-basket
+cd mcp-servers/fundamentals-basket
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -124,9 +124,9 @@ Add to `~/.config/claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "financials-basket": {
+    "fundamentals-basket": {
       "command": "/path/to/venv/bin/python",
-      "args": ["/path/to/mcp-servers/financials-basket/server.py"]
+      "args": ["/path/to/mcp-servers/fundamentals-basket/server.py"]
     }
   }
 }
@@ -186,7 +186,7 @@ Add to `~/.config/claude/claude_desktop_config.json`:
 ## Files
 
 ```
-financials-basket/
+fundamentals-basket/
 ├── server.py           # MCP server implementation
 ├── test_fetchers.py    # Standalone test script
 ├── requirements.txt    # Python dependencies

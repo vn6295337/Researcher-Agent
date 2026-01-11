@@ -80,7 +80,8 @@ def get_latest_value(facts: dict, concept: str, unit: str = "USD") -> Optional[d
                 "value": latest.get("val"),
                 "end_date": latest.get("end"),
                 "fiscal_year": latest.get("fy"),
-                "form": latest.get("form")
+                "form": latest.get("form"),
+                "filed": latest.get("filed"),
             }
         return None
     except Exception as e:
@@ -131,8 +132,8 @@ async def fetch_financials_sec(ticker: str) -> dict:
 
             facts = data.get("facts", {})
 
-            revenue = get_latest_value(facts, "Revenues") or \
-                      get_latest_value(facts, "RevenueFromContractWithCustomerExcludingAssessedTax") or \
+            revenue = get_latest_value(facts, "RevenueFromContractWithCustomerExcludingAssessedTax") or \
+                      get_latest_value(facts, "Revenues") or \
                       get_latest_value(facts, "SalesRevenueNet")
 
             net_income = get_latest_value(facts, "NetIncomeLoss")
@@ -171,7 +172,7 @@ async def fetch_financials_sec(ticker: str) -> dict:
                 "total_liabilities": total_liabilities,
                 "stockholders_equity": stockholders_equity,
                 "source": "SEC EDGAR XBRL",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Financials error: {e}")
@@ -227,7 +228,7 @@ async def fetch_debt_metrics_sec(ticker: str) -> dict:
                 "net_debt": {"value": net_debt} if net_debt else None,
                 "debt_to_equity": debt_to_equity,
                 "source": "SEC EDGAR XBRL",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Debt metrics error: {e}")
@@ -266,7 +267,7 @@ async def fetch_cash_flow_sec(ticker: str) -> dict:
                 "free_cash_flow": {"value": fcf} if fcf else None,
                 "rd_expense": rd_expense,
                 "source": "SEC EDGAR XBRL",
-                "as_of": datetime.now().isoformat()
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
     except Exception as e:
         logger.error(f"Cash flow error: {e}")
@@ -347,7 +348,7 @@ def _fetch_yfinance_financials_sync(ticker: str) -> dict:
             "source": "Yahoo Finance (fallback)",
             "fallback": True,
             "fallback_reason": "CIK not found in SEC EDGAR",
-            "as_of": datetime.now().isoformat()
+            "as_of": datetime.now().strftime("%Y-%m-%d")
         }
 
     except Exception as e:
@@ -537,5 +538,5 @@ async def get_sec_fundamentals_basket(ticker: str) -> dict:
         "cash_flow": cashflow,
         "swot_summary": swot_summary,
         "source": "SEC EDGAR",
-        "generated_at": datetime.now().isoformat()
+        "generated_at": datetime.now().strftime("%Y-%m-%d")
     }

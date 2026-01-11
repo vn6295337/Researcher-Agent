@@ -1,0 +1,224 @@
+{
+  "main": {
+    "id": "5ba76909b4eb5568",
+    "type": "split",
+    "children": [
+      {
+        "id": "3ae386f0468a33a2",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "369b0d31e1527f56",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/mcp_raw_visa.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "mcp_raw_visa"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b2599d2c6c63c05b",
+    "type": "split",
+    "children": [
+      {
+        "id": "546864a95c63f5d3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "84981946f0bd4dc4",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "byModifiedTime",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "713d96cfe76a5528",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "aa54f7dbd5c02255",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 249.5
+  },
+  "right": {
+    "id": "9564af0c9ac372a6",
+    "type": "split",
+    "children": [
+      {
+        "id": "5a247df6660da061",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9203f35f45682bb1",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/mcp_data_sources.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for mcp_data_sources"
+            }
+          },
+          {
+            "id": "0da6d740aca962b3",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/mcp_data_sources.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from mcp_data_sources"
+            }
+          },
+          {
+            "id": "028acb36fb7ac837",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "e2d887d8aa7fda47",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "3270af983d2799b6",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/mcp_data_sources.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of mcp_data_sources"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "369b0d31e1527f56",
+  "lastOpenFiles": [
+    "docs/mcp_test_report_KO.md",
+    "docs/metrics_schema_human_readable.md",
+    "docs/metrics_schema_emitted.md",
+    "docs/schema_normalization.md",
+    "mcp_client.py.tmp.1610.1768140230378",
+    "mcp_client.py.tmp.1610.1768140224277",
+    "mcp_client.py.tmp.1610.1768140212665",
+    "mcp_client.py.tmp.1610.1768140199252",
+    "mcp_client.py.tmp.1610.1768140165633",
+    "mcp_client.py.tmp.1610.1768140149514",
+    "mcp_client.py.tmp.1610.1768140127411",
+    "mcp_client.py.tmp.1610.1768140120176",
+    "mcp_client.py.tmp.1610.1768140113269",
+    "mcp_client.py.tmp.1610.1768139353083",
+    "docs/mcp_raw_visa.md",
+    "docs/alphavantage_data_schema.md",
+    "docs/mcp_data_sources.md",
+    "docs/mcp_normalized_schemas.md",
+    "docs/universal_metrics_schema.md",
+    "docs/mcp_test_report_BAC.md",
+    "docs/mcp_output_visa.md",
+    "docs/mcp_output_citigroup.md",
+    "docs/data_flow.md",
+    "docs/volatility_data_schema.md",
+    "docs/SEC_EDGAR_data_schema.md",
+    "docs/tavily_data_schema.md",
+    "docs/vader_data_schema.md",
+    "docs/reddit_data_schema.md",
+    "docs/finnhub_data_schema.md",
+    "docs/yahoo_options_data_schema.md",
+    "docs/yahoo_data_schema.md",
+    "docs/mcp_output_sample.md",
+    "docs/fundamentals_data_schema.md",
+    "docs/valuation_data_schema.md",
+    "mcp-servers/fundamentals-basket/mcp_sec_edgar.md"
+  ]
+}

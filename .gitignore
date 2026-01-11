@@ -25,3 +25,11 @@ deploy.sh
 # Cache
 .cache/
 *.cache
+.venv*
+.obsidian/
+*.pyc
+__pycache__/
+.env
+reports/
+AAP*_data.txt
+.venv-sentiment/

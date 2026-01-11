@@ -27,7 +27,7 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxx
 | Tool | Parameters | Returns |
 |------|------------|---------|
 | `tavily_search` | `query`, `search_depth`, `max_results` | General web search results |
-| `search_company_news` | `ticker`, `company_name` | Recent company news + SWOT hints |
+| `get_all_sources_news` | `ticker`, `company_name` | Recent company news + SWOT hints |
 | `search_going_concern_news` | `ticker`, `company_name` | Financial distress news + risk level |
 | `search_industry_trends` | `industry` | Industry outlook articles |
 | `search_competitor_news` | `ticker`, `competitors` | Competitor news coverage |

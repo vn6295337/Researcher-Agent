@@ -1,0 +1,939 @@
+{
+  "ticker": "V",
+  "company_name": "Visa Inc.",
+  "sources_available": [
+    "financials",
+    "valuation",
+    "volatility",
+    "macro",
+    "news",
+    "sentiment"
+  ],
+  "sources_failed": [],
+  "metrics": {
+    "financials": {
+      "group": "source_comparison",
+      "ticker": "V",
+      "sources": {
+        "sec_edgar": {
+          "source": "SEC EDGAR XBRL",
+          "data": {
+            "financials": {
+              "ticker": "V",
+              "source": "SEC EDGAR XBRL",
+              "as_of": "2026-01-11",
+              "revenue": {
+                "value": 40000000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "net_income": {
+                "value": 20058000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "operating_income": {
+                "value": 23994000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "operating_margin_pct": {
+                "value": 59.98,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "net_margin_pct": {
+                "value": 50.14,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "revenue_growth_3yr": {
+                "value": 14.34,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "total_assets": {
+                "value": 99627000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "total_liabilities": {
+                "value": 61718000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "stockholders_equity": {
+                "value": 26437000000,
+                "data_type": "FY",
+                "end_date": "2011-09-30",
+                "filed": "2011-11-18",
+                "fiscal_year": 2011,
+                "form": "10-K"
+              }
+            },
+            "debt": {
+              "ticker": "V",
+              "source": "SEC EDGAR XBRL",
+              "as_of": "2026-01-11",
+              "long_term_debt": {
+                "value": 20977000000,
+                "data_type": "FY",
+                "end_date": "2021-09-30",
+                "filed": "2021-11-18",
+                "fiscal_year": 2021,
+                "form": "10-K"
+              },
+              "total_debt": {
+                "value": 25171000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "cash": {
+                "value": 17164000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "net_debt": {
+                "value": 8007000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "debt_to_equity": {
+                "value": 0.95,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              }
+            },
+            "cash_flow": {
+              "ticker": "V",
+              "source": "SEC EDGAR XBRL",
+              "as_of": "2026-01-11",
+              "operating_cash_flow": {
+                "value": 23059000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "capital_expenditure": {
+                "value": 59000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "free_cash_flow": {
+                "value": 23000000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              }
+            }
+          }
+        },
+        "yahoo_finance": {
+          "source": "Yahoo Finance",
+          "data": {
+            "financials": {
+              "ticker": "V",
+              "source": "Yahoo Finance",
+              "as_of": "2026-01-11",
+              "revenue": {
+                "value": 40000000000,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "net_income": {
+                "value": 19853000704,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "gross_profit": {
+                "value": 39105998848,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "gross_margin_pct": {
+                "value": 97.76,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "net_margin_pct": {
+                "value": 49.63,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              }
+            },
+            "debt": {
+              "ticker": "V",
+              "source": "Yahoo Finance",
+              "as_of": "2026-01-11",
+              "total_debt": {
+                "value": 26083999744,
+                "data_type": "Point-in-time",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "cash": {
+                "value": 18997000192,
+                "data_type": "Point-in-time",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "net_debt": {
+                "value": 7086999552,
+                "data_type": "Point-in-time",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              }
+            },
+            "cash_flow": {
+              "ticker": "V",
+              "source": "Yahoo Finance",
+              "as_of": "2026-01-11",
+              "operating_cash_flow": {
+                "value": 23058999296,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "free_cash_flow": {
+                "value": 20072873984,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              }
+            }
+          }
+        }
+      },
+      "source": "fundamentals-basket",
+      "as_of": "2026-01-11"
+    },
+    "valuation": {
+      "group": "source_comparison",
+      "ticker": "V",
+      "sources": {
+        "yahoo_finance": {
+          "source": "Yahoo Finance",
+          "regular_market_time": "2026-01-09",
+          "data": {
+            "current_price": 349.77,
+            "market_cap": 675020144640.0,
+            "enterprise_value": 677386649600.0,
+            "trailing_pe": 34.25759,
+            "forward_pe": 24.254278,
+            "ps_ratio": 16.875504,
+            "pb_ratio": 18.046125,
+            "ev_ebitda": 24.168,
+            "trailing_peg": 1.9228,
+            "forward_peg": null,
+            "earnings_growth": -0.014,
+            "revenue_growth": 0.115
+          }
+        },
+        "alpha_vantage": {
+          "source": "Alpha Vantage",
+          "latest_quarter": "2025-09-30",
+          "fetched_at": "2026-01-09",
+          "data": {
+            "current_price": 339.81,
+            "market_cap": 675020145000.0,
+            "trailing_pe": 34.26,
+            "forward_pe": 27.32,
+            "ps_ratio": 16.88,
+            "pb_ratio": 18.15,
+            "ev_ebitda": 26.2,
+            "trailing_peg": 1.923,
+            "earnings_growth": -0.014,
+            "revenue_growth": 0.115
+          }
+        }
+      },
+      "source": "valuation-basket",
+      "as_of": "2026-01-11"
+    },
+    "volatility": {
+      "group": "raw_metrics",
+      "ticker": "V",
+      "metrics": {
+        "vix": {
+          "value": 15.45,
+          "data_type": "Daily",
+          "as_of": "2026-01-08",
+          "source": "FRED (Federal Reserve)",
+          "fallback": false
+        },
+        "vxn": {
+          "value": 20.15,
+          "data_type": "Daily",
+          "as_of": "2026-01-08",
+          "source": "FRED (Federal Reserve)",
+          "fallback": false
+        },
+        "beta": {
+          "value": 0.785,
+          "data_type": "1Y",
+          "as_of": "2026-01-09",
+          "source": "Calculated from Yahoo Finance data",
+          "fallback": false
+        },
+        "historical_volatility": {
+          "value": 22.16,
+          "data_type": "30D",
+          "as_of": "2026-01-09",
+          "source": "Calculated from Yahoo Finance data",
+          "fallback": false
+        },
+        "implied_volatility": {
+          "value": 30.0,
+          "data_type": "Forward",
+          "as_of": "2026-01-11",
+          "source": "Market Average (estimated)",
+          "fallback": true
+        }
+      },
+      "source": "volatility-basket",
+      "as_of": "2026-01-11"
+    },
+    "macro": {
+      "group": "raw_metrics",
+      "ticker": "MACRO",
+      "metrics": {
+        "gdp_growth": {
+          "value": 4.3,
+          "data_type": "Quarterly",
+          "as_of": "2025Q3",
+          "source": "BEA (Bureau of Economic Analysis)",
+          "fallback": false
+        },
+        "interest_rate": {
+          "value": 3.72,
+          "data_type": "Monthly",
+          "as_of": "2025-12-01",
+          "source": "FRED (Federal Reserve)",
+          "fallback": false
+        },
+        "cpi_inflation": {
+          "value": 2.74,
+          "data_type": "Monthly",
+          "as_of": "2025-November",
+          "source": "BLS (Bureau of Labor Statistics)",
+          "fallback": false
+        },
+        "unemployment": {
+          "value": 4.4,
+          "data_type": "Monthly",
+          "as_of": "2025-December",
+          "source": "BLS (Bureau of Labor Statistics)",
+          "fallback": false
+        }
+      },
+      "source": "macro-basket",
+      "as_of": "2026-01-11"
+    },
+    "news": {
+      "group": "content_analysis",
+      "ticker": "V",
+      "query": "Visa Inc. (V) stock news",
+      "items": [
+        {
+          "title": "Big Tech stocks are getting cheaper, and that could mean gains of up to 60%",
+          "content": "S 500 stocks may be expensive relative to their historical averages, but many are cheaper than they were at the start of the quarter.",
+          "url": "https://www.marketwatch.com/story/big-tech-stocks-are-getting-cheaper-and-that-could-mean-gains-of-up-to-60-fdf1b70c",
+          "datetime": "2025-12-16",
+          "source": "MarketWatch"
+        },
+        {
+          "title": "Dow, S&P 500 end at records because investors feel good about the economy \u2014 beyond the AI boom",
+          "content": "Investors were moving away from tech stocks, and using that money to push other parts of the market to new records",
+          "url": "https://www.marketwatch.com/story/dow-s-p-500-end-at-records-because-investors-feel-good-about-the-economy-beyond-the-ai-boom-0dcad0b9",
+          "datetime": "2025-12-11",
+          "source": "MarketWatch"
+        },
+        {
+          "title": "V: Visa Inc - Stock Price, Quote and News",
+          "content": "# Visa Inc V:NYSE. * 52 Week High Date06/11/25. * 52 Week Low Date04/07/25. ## Latest On Visa Inc. * CNBC's Investment Committee's Top Picks for 2026: Amazon, Sabra and VisaCNBC.com. And payment giants are preparingCNBC.com. * Economy grows, chip tariff delay, new S&P 500 record and more in Morning SquawkCNBC.com. ## Latest On Visa Inc. * CNBC's Investment Committee's Top Picks for 2026: Amazon, Sabra and VisaCNBC.com. And payment giants are preparingCNBC.com. * 52 Week High Date06/11/25. * 52 Week Low Date04/07/25. * P/E (TTM)34.66. * Earnings Date01/28/2026(est). * When Stock Recovery Defeats Securities Fraud Claims: The Visa DecisionTipRanks. * Monness Keeps Their Hold Rating on Visa (V)\")TipRanks. * Visa Stock Stumbles While Its Crypto Card Network Sees 525% Volume ExplosionTipRanks. * Visa Updates Class B Conversion Rates After Escrow DepositTipRanks. CNBC's Investment Committee's Top Picks for 2026: Amazon, Sabra and Visa. Visa Inc. is a global payments technology company. Vice Chairman, Chief People and Corporate Affairs Officer and Corporate Secretary. Independent Chairman of the Board.",
+          "url": "https://www.cnbc.com/quotes/V",
+          "datetime": null,
+          "source": null
+        },
+        {
+          "title": "V Stock Price | Visa Inc. Cl A Stock Quote (U.S.: NYSE)",
+          "content": "Key Data. Open $352.16; Day Range 349.16 - 354.70; 52 Week Range 299.00 - 375.51; Market Cap $668.84B; Shares Outstanding 1.69B; Public Float 1.68B",
+          "url": "https://www.marketwatch.com/investing/stock/v",
+          "datetime": null,
+          "source": null
+        },
+        {
+          "title": "Why Visa Stock Could Be A Strong Portfolio Add",
+          "content": "Image 1: Is UPS Stock A Buy After The Recent Rally? Image 3: Nvidia Vs Broadcom: Which AI Stock To Bet On? Jan 09, 2026, 08:57am ESTNvidia Vs Broadcom: Which AI Stock To Bet On? Image 5: How T-Mobile Stock Becomes A Cash Machine. Jan 09, 2026, 07:00am ESTHow T-Mobile Stock Becomes A Cash Machine. Image 6: Apple Stock\u2019s Make-Or-Break AI Bet. Jan 09, 2026, 06:30am ESTApple Stock\u2019s Make-Or-Break AI Bet. Image 7: Up 20% Will Cardano (ADA) Keep Rising? Why Visa Stock Could Be A Strong Portfolio Add. Forbes contributors publish independent expert analyses and insights. Visa (V) stock could be an appealing purchase at this time. Stocks can decline even when markets are performing well \u2013 consider events such as earnings reports, business updates, and outlook modifications. Forbes Daily: Join over 1 million Forbes Daily subscribers and get our best stories, exclusive reporting and essential analysis of the day\u2019s news in your inbox every weekday.",
+          "url": "https://www.forbes.com/sites/greatspeculations/2026/01/09/why-visa-stock-could-be-a-strong-portfolio-add/",
+          "datetime": null,
+          "source": null
+        },
+        {
+          "title": "Visa Inc. (V) Interactive Stock Chart",
+          "content": "Recent News: V \u00b7 Rain Raises $250 Million at $1.95 Billion Valuation for Stablecoin Payments Expansion \u00b7 Visa's Tokenization Push Is Becoming More Than a Security",
+          "url": "https://ca.finance.yahoo.com/quote/V/chart/",
+          "datetime": null,
+          "source": null
+        }
+      ],
+      "item_count": 6,
+      "sources_used": [
+        "Tavily",
+        "NewsAPI"
+      ],
+      "source": "news-basket",
+      "as_of": "2026-01-11",
+      "total_items": 6,
+      "showing": 6
+    },
+    "sentiment": {
+      "group": "content_analysis",
+      "ticker": "V",
+      "items": [
+        {
+          "title": "Googl gains",
+          "content": "Bought after 2025 February earnings, doubled down in April dip, some more in May dip. Started with 60k. \n\nSold lots of weeklies to you regards against my long calls; just closed my position. \n\nWill dip my legs into goog again for the next run to $400. \n\nMicro contributors - aapl in Jan, Msft in May; avgo after earnings and MU. ",
+          "url": "https://reddit.com/r/wallstreetbets/comments/1q9r6es/googl_gains/",
+          "datetime": "2026-01-11",
+          "source": "Reddit",
+          "subreddit": "r/wallstreetbets"
+        },
+        {
+          "title": "5 Things That Won't Happen In 2026 (The Alpha Of Inertia)",
+          "content": "This article lays out five slow-moving certainties for 2026 that investors can lean on. Click here to read more.",
+          "url": "https://finnhub.io/api/news?id=dc02cc7e318de2d458d5b92b23ef870ba3ca8e58c355af40624245a0a5104aac",
+          "datetime": "2026-01-10",
+          "source": "Finnhub",
+          "subreddit": null
+        },
+        {
+          "title": "Oklo ride to 1000$",
+          "content": "Call me skeptical boys but after losing a 160k I am going to let this ride to the moon. Not going to take profits until expiration. Diamond hands \ud83d\udc8e\ud83d\ude4c Let\u2019s see how much this can make me..",
+          "url": "https://reddit.com/r/wallstreetbets/comments/1q9b1qx/oklo_ride_to_1000/",
+          "datetime": "2026-01-10",
+          "source": "Reddit",
+          "subreddit": "r/wallstreetbets"
+        },
+        {
+          "title": "Rain Raises $250 Million at $1.95 Billion Valuation for Stablecoin Payments Expansion",
+          "content": "ICONIQ led the round as Rain targets growth across the Americas, Europe, Asia and Africa.",
+          "url": "https://finnhub.io/api/news?id=5b4865a899c398090c883407215234a2257358b44e7887e6273245102ea078e3",
+          "datetime": "2026-01-09",
+          "source": "Finnhub",
+          "subreddit": null
+        },
+        {
+          "title": "Visa's Tokenization Push Is Becoming More Than a Security Play",
+          "content": "V's tokenization push is evolving beyond security, boosting transaction efficiency, AI-driven insights and seamless payments across devices.",
+          "url": "https://finnhub.io/api/news?id=6a13ef2d88f1a76f3e9aa488ff8145e902e35a956e8d738a011cb308c46e00bc",
+          "datetime": "2026-01-09",
+          "source": "Finnhub",
+          "subreddit": null
+        },
+        {
+          "title": "Circle's Non-Interest Revenues Accelerate: Can the Momentum Continue?",
+          "content": "CRCL shows rapid growth in non-interest revenues, lifting 2025 guidance as subscriptions, services and transaction fees scale across its platform.",
+          "url": "https://finnhub.io/api/news?id=1289ce4bcc1cdc2007ebf983c1432f188ec44e19f416675d57c7840935a79e3a",
+          "datetime": "2026-01-09",
+          "source": "Finnhub",
+          "subreddit": null
+        },
+        {
+          "title": "Mastercard Up 7.6% in a Month: Are Investors Looking Beyond AI Hype?",
+          "content": "MA shares jump 7.6% in a month as investors rotate from AI trades toward durable payment networks with steady growth drivers.",
+          "url": "https://finnhub.io/api/news?id=1f8cda21dfecdb07398c4a91e6db2482c248150caeb8f6e60fa8c75a5dba1866",
+          "datetime": "2026-01-09",
+          "source": "Finnhub",
+          "subreddit": null
+        },
+        {
+          "title": "The Influencer Marketing Factory Unveils Season 6 of \"The Influence Factor\" Podcast with Cutting-Edge Industry Leaders",
+          "content": "NEW YORK CITY, NEW YORK / ACCESS Newswire / January 9, 2026 / Global influencer marketing leader The Influencer Marketing Factory today announced Season 6 of its acclaimed podcast,The Influence Factor . Bi-weekly episodes will feature conversations ...",
+          "url": "https://finnhub.io/api/news?id=2d14c9529412c1c8e935a931fc5a332c7d5348f12652408c956d87fd2f6d3c10",
+          "datetime": "2026-01-09",
+          "source": "Finnhub",
+          "subreddit": null
+        },
+        {
+          "title": "Fiserv: Potentially In A Bottoming Process",
+          "content": "Fiserv (FISV) stock plunged 70% and FY25 guidance reset.",
+          "url": "https://finnhub.io/api/news?id=a1e7f5530265f365630da945e31e0b63dd4badff90a7accd50a181ce8ead81b7",
+          "datetime": "2026-01-09",
+          "source": "Finnhub",
+          "subreddit": null
+        },
+        {
+          "title": "Why is Mastercard Incorporated (MA) One of the Best Major Stocks to Invest in Right Now?",
+          "content": "Mastercard Incorporated (NYSE:MA) is one of the best major stocks to invest in right now. Monness Crespi Hardt & Co., Inc. reiterated a Hold rating on Mastercard Incorporated (NYSE:MA) on January 5 and set a price target of $525.00. In addition, Keefe, Bruyette & Woods maintained a Buy rating on the company on January 2 [\u2026]",
+          "url": "https://finnhub.io/api/news?id=8bd58b88bae91ac0c493840cb9b9f851b4fdf1b61c6ec880020ad51e4ebc2a04",
+          "datetime": "2026-01-09",
+          "source": "Finnhub",
+          "subreddit": null
+        }
+      ],
+      "item_count": 58,
+      "sources_used": [
+        "Finnhub",
+        "Reddit"
+      ],
+      "source": "sentiment-basket",
+      "as_of": "2026-01-11",
+      "total_items": 58,
+      "showing": 10
+    }
+  },
+  "multi_source": {
+    "financials_all": {
+      "group": "source_comparison",
+      "ticker": "V",
+      "sources": {
+        "sec_edgar": {
+          "source": "SEC EDGAR XBRL",
+          "data": {
+            "financials": {
+              "ticker": "V",
+              "source": "SEC EDGAR XBRL",
+              "as_of": "2026-01-11",
+              "revenue": {
+                "value": 40000000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "net_income": {
+                "value": 20058000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "operating_income": {
+                "value": 23994000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "operating_margin_pct": {
+                "value": 59.98,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "net_margin_pct": {
+                "value": 50.14,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "revenue_growth_3yr": {
+                "value": 14.34,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "total_assets": {
+                "value": 99627000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "total_liabilities": {
+                "value": 61718000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "stockholders_equity": {
+                "value": 26437000000,
+                "data_type": "FY",
+                "end_date": "2011-09-30",
+                "filed": "2011-11-18",
+                "fiscal_year": 2011,
+                "form": "10-K"
+              }
+            },
+            "debt": {
+              "ticker": "V",
+              "source": "SEC EDGAR XBRL",
+              "as_of": "2026-01-11",
+              "long_term_debt": {
+                "value": 20977000000,
+                "data_type": "FY",
+                "end_date": "2021-09-30",
+                "filed": "2021-11-18",
+                "fiscal_year": 2021,
+                "form": "10-K"
+              },
+              "total_debt": {
+                "value": 25171000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "cash": {
+                "value": 17164000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "net_debt": {
+                "value": 8007000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "debt_to_equity": {
+                "value": 0.95,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              }
+            },
+            "cash_flow": {
+              "ticker": "V",
+              "source": "SEC EDGAR XBRL",
+              "as_of": "2026-01-11",
+              "operating_cash_flow": {
+                "value": 23059000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "capital_expenditure": {
+                "value": 59000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              },
+              "free_cash_flow": {
+                "value": 23000000000,
+                "data_type": "FY",
+                "end_date": "2025-09-30",
+                "filed": "2025-11-06",
+                "fiscal_year": 2025,
+                "form": "10-K"
+              }
+            }
+          }
+        },
+        "yahoo_finance": {
+          "source": "Yahoo Finance",
+          "data": {
+            "financials": {
+              "ticker": "V",
+              "source": "Yahoo Finance",
+              "as_of": "2026-01-11",
+              "revenue": {
+                "value": 40000000000,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "net_income": {
+                "value": 19853000704,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "gross_profit": {
+                "value": 39105998848,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "gross_margin_pct": {
+                "value": 97.76,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "net_margin_pct": {
+                "value": 49.63,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              }
+            },
+            "debt": {
+              "ticker": "V",
+              "source": "Yahoo Finance",
+              "as_of": "2026-01-11",
+              "total_debt": {
+                "value": 26083999744,
+                "data_type": "Point-in-time",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "cash": {
+                "value": 18997000192,
+                "data_type": "Point-in-time",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "net_debt": {
+                "value": 7086999552,
+                "data_type": "Point-in-time",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              }
+            },
+            "cash_flow": {
+              "ticker": "V",
+              "source": "Yahoo Finance",
+              "as_of": "2026-01-11",
+              "operating_cash_flow": {
+                "value": 23058999296,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              },
+              "free_cash_flow": {
+                "value": 20072873984,
+                "data_type": "TTM",
+                "end_date": "2025-09-30",
+                "filed": "2026-01-09"
+              }
+            }
+          }
+        }
+      },
+      "source": "fundamentals-basket",
+      "as_of": "2026-01-11"
+    },
+    "valuation_all": {
+      "group": "source_comparison",
+      "ticker": "V",
+      "sources": {
+        "yahoo_finance": {
+          "source": "Yahoo Finance",
+          "regular_market_time": "2026-01-09",
+          "data": {
+            "current_price": 349.77,
+            "market_cap": 675020144640.0,
+            "enterprise_value": 677386649600.0,
+            "trailing_pe": 34.25759,
+            "forward_pe": 24.254278,
+            "ps_ratio": 16.875504,
+            "pb_ratio": 18.046125,
+            "ev_ebitda": 24.168,
+            "trailing_peg": 1.9228,
+            "forward_peg": null,
+            "earnings_growth": -0.014,
+            "revenue_growth": 0.115
+          }
+        },
+        "alpha_vantage": {
+          "source": "Alpha Vantage",
+          "latest_quarter": "2025-09-30",
+          "fetched_at": "2026-01-09",
+          "data": {
+            "current_price": 339.81,
+            "market_cap": 675020145000.0,
+            "trailing_pe": 34.26,
+            "forward_pe": 27.32,
+            "ps_ratio": 16.88,
+            "pb_ratio": 18.15,
+            "ev_ebitda": 26.2,
+            "trailing_peg": 1.923,
+            "earnings_growth": -0.014,
+            "revenue_growth": 0.115
+          }
+        }
+      },
+      "source": "valuation-basket",
+      "as_of": "2026-01-11"
+    },
+    "macro_all": {
+      "group": "raw_metrics",
+      "ticker": "MACRO",
+      "metrics": {
+        "gdp_growth": {
+          "value": 4.3,
+          "data_type": "Quarterly",
+          "as_of": "2025Q3",
+          "source": "BEA (Bureau of Economic Analysis)",
+          "fallback": false
+        },
+        "interest_rate": {
+          "value": 3.72,
+          "data_type": "Monthly",
+          "as_of": "2025-12-01",
+          "source": "FRED (Federal Reserve)",
+          "fallback": false
+        },
+        "cpi_inflation": {
+          "value": 2.74,
+          "data_type": "Monthly",
+          "as_of": "2025-November",
+          "source": "BLS (Bureau of Labor Statistics)",
+          "fallback": false
+        },
+        "unemployment": {
+          "value": 4.4,
+          "data_type": "Monthly",
+          "as_of": "2025-December",
+          "source": "BLS (Bureau of Labor Statistics)",
+          "fallback": false
+        }
+      },
+      "source": "macro-basket",
+      "as_of": "2026-01-11"
+    },
+    "volatility_all": {
+      "group": "raw_metrics",
+      "ticker": "V",
+      "metrics": {
+        "vix": {
+          "value": 15.45,
+          "data_type": "Daily",
+          "as_of": "2026-01-08",
+          "source": "FRED (Federal Reserve)",
+          "fallback": false
+        },
+        "vxn": {
+          "value": 20.15,
+          "data_type": "Daily",
+          "as_of": "2026-01-08",
+          "source": "FRED (Federal Reserve)",
+          "fallback": false
+        },
+        "beta": {
+          "value": 0.785,
+          "data_type": "1Y",
+          "as_of": "2026-01-09",
+          "source": "Calculated from Yahoo Finance data",
+          "fallback": false
+        },
+        "historical_volatility": {
+          "value": 22.16,
+          "data_type": "30D",
+          "as_of": "2026-01-09",
+          "source": "Calculated from Yahoo Finance data",
+          "fallback": false
+        },
+        "implied_volatility": {
+          "value": 30.0,
+          "data_type": "Forward",
+          "as_of": "2026-01-11",
+          "source": "Market Average (estimated)",
+          "fallback": true
+        }
+      },
+      "source": "volatility-basket",
+      "as_of": "2026-01-11"
+    }
+  },
+  "conflict_resolution": {
+    "financials": {
+      "primary_source": "SEC EDGAR XBRL",
+      "secondary_source": "Yahoo Finance",
+      "conflicts": []
+    },
+    "valuation": {
+      "primary_source": "Yahoo Finance",
+      "secondary_source": "Alpha Vantage",
+      "conflicts": []
+    }
+  },
+  "aggregated_swot": {
+    "strengths": [],
+    "weaknesses": [],
+    "opportunities": [],
+    "threats": []
+  },
+  "completeness": {
+    "completeness_pct": 50.0,
+    "metrics_found": 7,
+    "metrics_total": 14,
+    "missing": {
+      "financials": [
+        "revenue",
+        "net_income",
+        "eps",
+        "debt_to_equity"
+      ],
+      "valuation": [
+        "trailing_pe",
+        "pb_ratio",
+        "ps_ratio"
+      ]
+    }
+  },
+  "generated_at": "2026-01-11T14:01:14.368474"
+}

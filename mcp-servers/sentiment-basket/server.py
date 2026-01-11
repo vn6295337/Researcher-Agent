@@ -1,9 +1,11 @@
 """
 Sentiment Basket MCP Server
 
-Aggregates sentiment metrics from multiple free sources for SWOT analysis:
-- Finnhub News Sentiment → News articles analyzed with VADER
-- Reddit → Retail investor sentiment from r/WallStreetBets, r/stocks
+Aggregates raw content from multiple sources for downstream sentiment analysis:
+- Finnhub News → Raw news articles with headlines
+- Reddit → Retail investor posts from r/WallStreetBets, r/stocks
+
+Note: VADER sentiment scoring removed - apply sentiment analysis downstream.
 
 Usage:
     python server.py
@@ -16,7 +18,7 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Load environment variables from .env
@@ -41,13 +43,6 @@ from mcp.types import Tool, TextContent
 # Data fetching
 import httpx
 
-# Sentiment analysis
-try:
-    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-    VADER_AVAILABLE = True
-except ImportError:
-    VADER_AVAILABLE = False
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sentiment-basket")
 
@@ -57,31 +52,21 @@ server = Server("sentiment-basket")
 # API Keys
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")  # Get free key: https://finnhub.io/register
 
-# Initialize VADER if available
-vader = SentimentIntensityAnalyzer() if VADER_AVAILABLE else None
-
 
 # ============================================================
 # DATA FETCHERS
 # ============================================================
 
-async def fetch_finnhub_sentiment(ticker: str) -> dict:
+async def fetch_finnhub_news(ticker: str) -> dict:
     """
-    Fetch company news from Finnhub and compute sentiment with VADER.
-    Uses free company-news endpoint + local NLP analysis.
+    Fetch company news from Finnhub.
+    Returns raw articles without sentiment scoring.
     """
     if not FINNHUB_API_KEY:
         return {
-            "metric": "Finnhub News Sentiment",
+            "metric": "Finnhub News",
             "ticker": ticker,
             "error": "FINNHUB_API_KEY not configured. Get free key at https://finnhub.io/register"
-        }
-
-    if not VADER_AVAILABLE:
-        return {
-            "metric": "Finnhub News Sentiment",
-            "ticker": ticker,
-            "error": "VADER sentiment analyzer not installed. Run: pip install vaderSentiment"
         }
 
     try:
@@ -102,94 +87,64 @@ async def fetch_finnhub_sentiment(ticker: str) -> dict:
 
             if isinstance(data, dict) and "error" in data:
                 return {
-                    "metric": "Finnhub News Sentiment",
+                    "metric": "Finnhub News",
                     "ticker": ticker,
                     "error": data.get("error", "Unknown error")
                 }
 
             if not data or not isinstance(data, list):
                 return {
-                    "metric": "Finnhub News Sentiment",
+                    "metric": "Finnhub News",
                     "ticker": ticker.upper(),
-                    "score": 50,
-                    "articles_analyzed": 0,
-                    "interpretation": "No recent news articles found",
-                    "swot_category": "NEUTRAL",
+                    "articles_count": 0,
+                    "articles": [],
                     "source": "Finnhub",
-                    "as_of": datetime.now().isoformat()
+                    "as_of": datetime.now().strftime("%Y-%m-%d")
                 }
 
-            # Analyze sentiment of headlines with VADER
-            total_score = 0
+            # Return raw articles without sentiment scoring
+            articles_list = []
             for article in data[:50]:  # Limit to 50 articles
-                headline = article.get("headline", "")
-                summary = article.get("summary", "")
-                text = f"{headline} {summary}"
-                scores = vader.polarity_scores(text)
-                total_score += scores["compound"]
-
-            articles_count = min(len(data), 50)
-            avg_sentiment = total_score / articles_count if articles_count > 0 else 0
-            score = (avg_sentiment + 1) * 50  # Convert -1..1 to 0..100
-
-            # Interpretation
-            if score >= 60:
-                interpretation = "Bullish sentiment - Positive news coverage"
-                swot_impact = "STRENGTH"
-            elif score >= 45:
-                interpretation = "Neutral sentiment - Mixed news coverage"
-                swot_impact = "NEUTRAL"
-            elif score >= 30:
-                interpretation = "Bearish sentiment - Negative news coverage"
-                swot_impact = "WEAKNESS"
-            else:
-                interpretation = "Very bearish sentiment - Predominantly negative coverage"
-                swot_impact = "THREAT"
+                articles_list.append({
+                    "headline": article.get("headline", ""),
+                    "summary": article.get("summary", ""),
+                    "url": article.get("url", ""),
+                    "source": article.get("source", ""),
+                    "datetime": datetime.fromtimestamp(article.get("datetime", 0), tz=timezone.utc).strftime("%Y-%m-%d") if article.get("datetime") else None,
+                })
 
             return {
-                "metric": "Finnhub News Sentiment",
+                "metric": "Finnhub News",
                 "ticker": ticker.upper(),
-                "score": round(score, 2),
-                "sentiment_raw": round(avg_sentiment, 3),
-                "articles_analyzed": articles_count,
+                "articles_count": len(articles_list),
                 "total_articles": len(data),
-                "interpretation": interpretation,
-                "swot_category": swot_impact,
-                "source": "Finnhub + VADER",
-                "as_of": datetime.now().isoformat()
+                "source": "Finnhub",
+                "articles": articles_list,
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
 
     except Exception as e:
-        logger.error(f"Finnhub sentiment error for {ticker}: {e}")
+        logger.error(f"Finnhub news error for {ticker}: {e}")
         return {
-            "metric": "Finnhub News Sentiment",
+            "metric": "Finnhub News",
             "ticker": ticker,
             "error": str(e)
         }
 
 
-async def fetch_reddit_sentiment(ticker: str, company_name: str = "") -> dict:
+async def fetch_reddit_posts(ticker: str, company_name: str = "") -> dict:
     """
-    Fetch Reddit sentiment using public JSON endpoints.
+    Fetch Reddit posts using public JSON endpoints.
     Searches r/WallStreetBets, r/stocks for mentions.
-    Uses VADER for sentiment scoring (100 req/min rate limit).
+    Returns raw posts without sentiment scoring.
     """
-    if not VADER_AVAILABLE:
-        return {
-            "metric": "Reddit Sentiment",
-            "ticker": ticker,
-            "error": "VADER sentiment analyzer not installed"
-        }
-
     try:
         async with httpx.AsyncClient() as client:
             headers = {"User-Agent": "SentimentBasket/1.0"}
 
             subreddits = ["wallstreetbets", "stocks"]
-            all_texts = []
-            total_score = 0
+            posts_list = []
             total_upvotes = 0
-            post_count = 0
 
             search_query = ticker.upper()
 
@@ -218,141 +173,95 @@ async def fetch_reddit_sentiment(ticker: str, company_name: str = "") -> dict:
                     title = post_data.get("title", "")
                     selftext = post_data.get("selftext", "")[:500]  # Limit text length
                     upvotes = post_data.get("ups", 1)
+                    permalink = post_data.get("permalink", "")
 
-                    text = f"{title} {selftext}"
-
-                    # VADER sentiment
-                    scores = vader.polarity_scores(text)
-                    total_score += scores["compound"] * upvotes
                     total_upvotes += upvotes
-                    post_count += 1
 
-            if post_count == 0:
-                return {
-                    "metric": "Reddit Sentiment",
-                    "ticker": ticker.upper(),
-                    "score": 50,  # Neutral default
-                    "posts_analyzed": 0,
-                    "interpretation": "No recent posts found - Insufficient data",
-                    "swot_category": "NEUTRAL",
-                    "source": "Reddit (Public)",
-                    "as_of": datetime.now().isoformat()
-                }
-
-            avg_sentiment = (total_score / total_upvotes) if total_upvotes > 0 else 0
-            score = (avg_sentiment + 1) * 50
-
-            if score >= 65:
-                interpretation = "Bullish retail sentiment"
-                swot_impact = "STRENGTH"
-            elif score >= 50:
-                interpretation = "Neutral retail sentiment"
-                swot_impact = "NEUTRAL"
-            elif score >= 35:
-                interpretation = "Bearish retail sentiment"
-                swot_impact = "WEAKNESS"
-            else:
-                interpretation = "Very bearish retail sentiment"
-                swot_impact = "THREAT"
+                    # Capture post details with URL (no sentiment scoring)
+                    posts_list.append({
+                        "title": title,
+                        "selftext": selftext,
+                        "url": f"https://reddit.com{permalink}" if permalink else "",
+                        "subreddit": f"r/{subreddit}",
+                        "upvotes": upvotes,
+                        "created_utc": datetime.fromtimestamp(post_data.get("created_utc", 0), tz=timezone.utc).strftime("%Y-%m-%d") if post_data.get("created_utc") else None
+                    })
 
             return {
-                "metric": "Reddit Sentiment",
+                "metric": "Reddit Posts",
                 "ticker": ticker.upper(),
-                "score": round(score, 2),
-                "sentiment_raw": round(avg_sentiment, 3),
-                "posts_analyzed": post_count,
+                "posts_count": len(posts_list),
                 "total_upvotes": total_upvotes,
-                "interpretation": interpretation,
-                "swot_category": swot_impact,
                 "source": "Reddit (Public)",
-                "as_of": datetime.now().isoformat()
+                "posts": posts_list,
+                "as_of": datetime.now().strftime("%Y-%m-%d")
             }
 
     except Exception as e:
-        logger.error(f"Reddit public sentiment error: {e}")
+        logger.error(f"Reddit posts error: {e}")
         return {
-            "metric": "Reddit Sentiment",
+            "metric": "Reddit Posts",
             "ticker": ticker,
             "error": str(e)
         }
 
 
-async def get_full_sentiment_basket(ticker: str, company_name: str = "") -> dict:
+async def get_all_sources_sentiment(ticker: str, company_name: str = "") -> dict:
     """
-    Fetch all sentiment metrics for a given ticker/company.
-    Returns aggregated SWOT-ready data.
+    Fetch raw content from all sources for a given ticker/company.
+    Returns NORMALIZED schema for content_analysis group.
+    Sentiment analysis should be applied downstream.
     """
     if not company_name:
         company_name = ticker  # Use ticker as fallback
 
-    # Fetch all metrics concurrently
-    finnhub_task = fetch_finnhub_sentiment(ticker)
-    reddit_task = fetch_reddit_sentiment(ticker, company_name)
+    # Fetch from all sources concurrently
+    finnhub_task = fetch_finnhub_news(ticker)
+    reddit_task = fetch_reddit_posts(ticker, company_name)
 
     finnhub, reddit = await asyncio.gather(finnhub_task, reddit_task)
 
-    # Aggregate SWOT impacts
-    swot_summary = {
-        "strengths": [],
-        "weaknesses": [],
-        "opportunities": [],
-        "threats": []
-    }
+    # Build normalized content_analysis schema
+    items = []
+    sources_used = []
 
-    # Calculate composite score (weighted average)
-    scores = []
-    weights = []
+    # Add Finnhub articles
+    if "error" not in finnhub and finnhub.get("articles"):
+        sources_used.append("Finnhub")
+        for article in finnhub.get("articles", []):
+            items.append({
+                "title": article.get("headline"),
+                "content": article.get("summary"),
+                "url": article.get("url"),
+                "datetime": article.get("datetime"),
+                "source": "Finnhub",
+                "subreddit": None,  # Not applicable for Finnhub
+            })
 
-    for metric, weight in [(finnhub, 0.5), (reddit, 0.5)]:
-        if "error" not in metric and "score" in metric:
-            scores.append(metric["score"])
-            weights.append(weight)
+    # Add Reddit posts
+    if "error" not in reddit and reddit.get("posts"):
+        sources_used.append("Reddit")
+        for post in reddit.get("posts", []):
+            items.append({
+                "title": post.get("title"),
+                "content": post.get("selftext"),
+                "url": post.get("url"),
+                "datetime": post.get("created_utc"),
+                "source": "Reddit",
+                "subreddit": post.get("subreddit"),  # Separate subreddit field
+            })
 
-            impact = metric.get("swot_category", "NEUTRAL")
-            desc = f"{metric['metric']}: {metric.get('score', 'N/A')}/100 - {metric.get('interpretation', '')}"
-
-            if impact == "STRENGTH":
-                swot_summary["strengths"].append(desc)
-            elif impact == "WEAKNESS":
-                swot_summary["weaknesses"].append(desc)
-            elif impact == "OPPORTUNITY":
-                swot_summary["opportunities"].append(desc)
-            elif impact in ["THREAT", "SEVERE_THREAT"]:
-                swot_summary["threats"].append(desc)
-
-    # Calculate weighted composite score
-    if scores and weights:
-        total_weight = sum(weights)
-        composite_score = sum(s * w for s, w in zip(scores, weights)) / total_weight
-    else:
-        composite_score = 50  # Neutral default
-
-    # Overall interpretation
-    if composite_score >= 65:
-        overall = "Overall Bullish Sentiment"
-        overall_swot = "STRENGTH"
-    elif composite_score >= 50:
-        overall = "Overall Neutral Sentiment"
-        overall_swot = "NEUTRAL"
-    elif composite_score >= 35:
-        overall = "Overall Bearish Sentiment"
-        overall_swot = "WEAKNESS"
-    else:
-        overall = "Overall Very Bearish Sentiment"
-        overall_swot = "THREAT"
+    # Sort by datetime (most recent first)
+    items.sort(key=lambda x: x.get("datetime") or "", reverse=True)
 
     return {
+        "group": "content_analysis",
         "ticker": ticker.upper(),
-        "company_name": company_name,
-        "composite_score": round(composite_score, 2),
-        "overall_interpretation": overall,
-        "overall_swot_category": overall_swot,
-        "metrics": {
-            "finnhub": finnhub,
-            "reddit": reddit
-        },
-        "swot_summary": swot_summary,
-        "generated_at": datetime.now().isoformat()
+        "items": items,
+        "item_count": len(items),
+        "sources_used": sources_used,
+        "source": "sentiment-basket",
+        "as_of": datetime.now().strftime("%Y-%m-%d")
     }
 
 
@@ -362,11 +271,11 @@ async def get_full_sentiment_basket(ticker: str, company_name: str = "") -> dict
 
 @server.list_tools()
 async def list_tools():
-    """List available sentiment tools."""
+    """List available content fetching tools (no sentiment scoring)."""
     return [
         Tool(
-            name="get_finnhub_sentiment",
-            description="Get news sentiment from Finnhub company news analyzed with VADER. Returns sentiment score (0-100).",
+            name="get_finnhub_news",
+            description="Get news articles from Finnhub company news. Returns raw articles without sentiment scoring.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -379,8 +288,8 @@ async def list_tools():
             }
         ),
         Tool(
-            name="get_reddit_sentiment",
-            description="Get retail investor sentiment from Reddit (r/WallStreetBets, r/stocks). Uses VADER NLP for scoring.",
+            name="get_reddit_posts",
+            description="Get retail investor posts from Reddit (r/WallStreetBets, r/stocks). Returns raw posts without sentiment scoring.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -398,7 +307,7 @@ async def list_tools():
         ),
         Tool(
             name="get_sentiment_basket",
-            description="Get full sentiment basket (Finnhub + Reddit) with composite score and SWOT summary.",
+            description="Get full content basket (Finnhub + Reddit) with raw articles/posts. No sentiment scoring - apply VADER downstream.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -417,38 +326,84 @@ async def list_tools():
     ]
 
 
+# Global timeout for all tool operations (seconds)
+# Increased for completeness-first mode
+TOOL_TIMEOUT = 60.0
+
+
+async def _execute_tool_with_timeout(name: str, arguments: dict) -> dict:
+    """Execute a tool with timeout. Returns result dict or error dict."""
+    ticker = arguments.get("ticker", "").upper()
+    company_name = arguments.get("company_name", "")
+
+    if name == "get_finnhub_news":
+        if not ticker:
+            return {"error": "ticker is required"}
+        return await fetch_finnhub_news(ticker)
+    elif name == "get_reddit_posts":
+        if not ticker:
+            return {"error": "ticker is required"}
+        return await fetch_reddit_posts(ticker, company_name)
+    elif name == "get_sentiment_basket":
+        if not ticker:
+            return {"error": "ticker is required"}
+        return await get_all_sources_sentiment(ticker, company_name)
+    else:
+        return {"error": f"Unknown tool: {name}"}
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
-    """Handle tool invocations."""
+    """
+    Handle tool invocations with GUARANTEED JSON-RPC response.
+
+    This function ALWAYS returns a valid TextContent response, even if:
+    - External APIs timeout
+    - Exceptions occur during processing
+    - Any unexpected error happens
+
+    This ensures MCP protocol compliance and prevents client hangs.
+    """
     try:
-        if name == "get_finnhub_sentiment":
-            ticker = arguments.get("ticker", "").upper()
-            if not ticker:
-                return [TextContent(type="text", text="Error: ticker is required")]
-            result = await fetch_finnhub_sentiment(ticker)
+        # Execute tool with global timeout
+        try:
+            result = await asyncio.wait_for(
+                _execute_tool_with_timeout(name, arguments),
+                timeout=TOOL_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            ticker = arguments.get("ticker", "")
+            logger.error(f"Tool {name} timed out after {TOOL_TIMEOUT}s for {ticker}")
+            result = {
+                "error": f"Tool execution timed out after {TOOL_TIMEOUT} seconds",
+                "ticker": ticker,
+                "tool": name,
+                "source": "sentiment-basket",
+                "fallback": True
+            }
 
-        elif name == "get_reddit_sentiment":
-            ticker = arguments.get("ticker", "").upper()
-            company_name = arguments.get("company_name", "")
-            if not ticker:
-                return [TextContent(type="text", text="Error: ticker is required")]
-            result = await fetch_reddit_sentiment(ticker, company_name)
+        # Ensure result is JSON serializable
+        return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
-        elif name == "get_sentiment_basket":
-            ticker = arguments.get("ticker", "").upper()
-            company_name = arguments.get("company_name", "")
-            if not ticker:
-                return [TextContent(type="text", text="Error: ticker is required")]
-            result = await get_full_sentiment_basket(ticker, company_name)
-
-        else:
-            return [TextContent(type="text", text=f"Unknown tool: {name}")]
-
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON serialization error for {name}: {e}")
+        return [TextContent(type="text", text=json.dumps({
+            "error": f"JSON serialization failed: {str(e)}",
+            "ticker": arguments.get("ticker", ""),
+            "tool": name,
+            "source": "sentiment-basket"
+        }))]
 
     except Exception as e:
-        logger.error(f"Tool error {name}: {e}")
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        # Catch-all: ALWAYS return valid JSON-RPC response
+        logger.error(f"Unexpected error in {name}: {type(e).__name__}: {e}")
+        return [TextContent(type="text", text=json.dumps({
+            "error": f"{type(e).__name__}: {str(e)}",
+            "ticker": arguments.get("ticker", ""),
+            "tool": name,
+            "source": "sentiment-basket",
+            "fallback": True
+        }))]
 
 
 # ============================================================
