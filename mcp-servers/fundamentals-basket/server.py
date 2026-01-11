@@ -21,18 +21,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-# Load environment variables
+# Load environment variables (later files override earlier ones)
 from dotenv import load_dotenv
-
 env_paths = [
-    Path.home() / ".env",
-    Path(__file__).parent / ".env",
-    Path(__file__).parent.parent.parent / ".env",
+    Path.home() / ".env",  # Home directory (base)
+    Path(__file__).parent.parent.parent / ".env",  # Project root (overrides)
+    Path(__file__).parent / ".env",  # MCP server directory (highest priority)
 ]
 for env_path in env_paths:
     if env_path.exists():
-        load_dotenv(env_path)
-        break
+        load_dotenv(env_path, override=True)
 
 # MCP SDK
 from mcp.server import Server
