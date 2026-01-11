@@ -185,6 +185,9 @@
   },
   "active": "369b0d31e1527f56",
   "lastOpenFiles": [
+    "app.py.tmp.1610.1768146282892",
+    "mcp-servers/volatility-basket/server.py.tmp.1610.1768144883587",
+    "__pycache__/mcp_client.cpython-311.pyc.140529827342128",
     "docs/mcp_test_report_KO.md",
     "docs/metrics_schema_human_readable.md",
     "docs/metrics_schema_emitted.md",
@@ -197,8 +200,6 @@
     "mcp_client.py.tmp.1610.1768140149514",
     "mcp_client.py.tmp.1610.1768140127411",
     "mcp_client.py.tmp.1610.1768140120176",
-    "mcp_client.py.tmp.1610.1768140113269",
-    "mcp_client.py.tmp.1610.1768139353083",
     "docs/mcp_raw_visa.md",
     "docs/alphavantage_data_schema.md",
     "docs/mcp_data_sources.md",

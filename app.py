@@ -334,8 +334,8 @@ async def handle_tasks_get(params: dict, request_id: Any) -> dict:
         }
     }
 
-    # Include partial_metrics for real-time streaming during WORKING status
-    if task.status == TaskStatus.WORKING and task.partial_metrics:
+    # Include partial_metrics for WORKING and COMPLETED (ensures final sources aren't missed)
+    if task.partial_metrics and task.status in (TaskStatus.WORKING, TaskStatus.COMPLETED):
         result["task"]["partial_metrics"] = [m.model_dump() for m in task.partial_metrics]
 
     if task.status == TaskStatus.COMPLETED and task.artifacts:
