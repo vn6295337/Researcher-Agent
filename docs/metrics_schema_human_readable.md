@@ -181,224 +181,88 @@ Standardized output schema for financial data across ALL industries (banks, cons
 
 ---
 
-## Output Format
+## Output Format (Example: Apple Inc.)
 
-### Aggregated Response (from `fetch_all_research_data`)
+### Summary
 
-```json
-{
-  "ticker": "AAPL",
-  "company_name": "Apple Inc.",
-  "sources_available": ["fundamentals", "valuation", "volatility", "macro", "news", "sentiment"],
-  "sources_failed": [],
-  "metrics": {
-    "fundamentals": { ... },
-    "valuation": { ... },
-    "volatility": { ... },
-    "macro": { ... },
-    "news": { ... },
-    "sentiment": { ... }
-  },
-  "multi_source": {
-    "fundamentals_all": { ... },
-    "valuation_all": { ... },
-    "macro_all": { ... },
-    "volatility_all": { ... }
-  },
-  "conflict_resolution": { ... },
-  "aggregated_swot": { ... },
-  "completeness": {
-    "completeness_pct": 85.0,
-    "metrics_found": 17,
-    "metrics_total": 20,
-    "missing": { ... }
-  },
-  "generated_at": "2025-01-11T21:00:00"
-}
-```
+| S/N | MCP | Status | Expected | Actual | Source |
+|-----|-----|--------|----------|--------|--------|
+| 1 | fundamentals | PASS | 9 | 9 | SEC EDGAR + Yahoo Finance |
+| 2 | valuation | PASS | 11 | 11 | Yahoo Finance |
+| 3 | volatility | PASS | 5 | 5 | FRED + Yahoo Finance |
+| 4 | macro | PASS | 4 | 4 | BEA + BLS + FRED |
+| 5 | news | PASS | - | 10 | Tavily + NYT + NewsAPI |
+| 6 | sentiment | PASS | - | 15 | Finnhub + Reddit |
 
 ---
 
-### Fundamentals Output
+### Quantitative Data
 
-```json
-{
-  "sec_edgar": {
-    "source": "SEC EDGAR XBRL",
-    "data": {
-      "revenue": {"value": 383285000000, "end_date": "2024-09-28", "fiscal_year": 2024, "form": "10-K"},
-      "net_income": {"value": 93736000000, "end_date": "2024-09-28", "fiscal_year": 2024, "form": "10-K"},
-      "net_margin_pct": {"value": 24.45, "end_date": "2024-09-28", "fiscal_year": 2024, "form": "10-K"},
-      "total_assets": {"value": 364980000000},
-      "total_liabilities": {"value": 308030000000},
-      "stockholders_equity": {"value": 56950000000}
-    }
-  },
-  "yahoo_finance": {
-    "source": "Yahoo Finance",
-    "data": {
-      "operating_margin_pct": 30.74,
-      "total_debt": 106629000000,
-      "operating_cash_flow": 118254000000,
-      "free_cash_flow": 111443000000
-    }
-  }
-}
-```
-
----
-
-### Valuation Output
-
-```json
-{
-  "yahoo_finance": {
-    "source": "Yahoo Finance",
-    "data": {
-      "current_price": 229.87,
-      "market_cap": 3480000000000,
-      "enterprise_value": 3580000000000,
-      "trailing_pe": 37.12,
-      "forward_pe": 31.45,
-      "ps_ratio": 9.08,
-      "pb_ratio": 61.11,
-      "trailing_peg": 2.89,
-      "forward_peg": 2.15,
-      "earnings_growth": 0.1047,
-      "revenue_growth": 0.0204
-    }
-  },
-  "alpha_vantage": {
-    "source": "Alpha Vantage",
-    "data": { ... }
-  }
-}
-```
+| S/N | Metric | Value | Data Type | As Of | Source | Category |
+|-----|--------|-------|-----------|-------|--------|----------|
+| 1 | revenue | 383,285,000,000 | FY | 2024-09-28 | SEC EDGAR | Fundamentals |
+| 2 | net_income | 93,736,000,000 | FY | 2024-09-28 | SEC EDGAR | Fundamentals |
+| 3 | net_margin_pct | 24.45 | FY | 2024-09-28 | SEC EDGAR | Fundamentals |
+| 4 | total_assets | 364,980,000,000 | FY | 2024-09-28 | SEC EDGAR | Fundamentals |
+| 5 | total_liabilities | 308,030,000,000 | FY | 2024-09-28 | SEC EDGAR | Fundamentals |
+| 6 | stockholders_equity | 56,950,000,000 | FY | 2024-09-28 | SEC EDGAR | Fundamentals |
+| 7 | operating_margin_pct | 30.74 | TTM | 2025-01-11 | Yahoo Finance | Fundamentals |
+| 8 | total_debt | 106,629,000,000 | TTM | 2025-01-11 | Yahoo Finance | Fundamentals |
+| 9 | free_cash_flow | 111,443,000,000 | TTM | 2025-01-11 | Yahoo Finance | Fundamentals |
+| 10 | current_price | 229.87 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 11 | market_cap | 3,480,000,000,000 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 12 | enterprise_value | 3,580,000,000,000 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 13 | trailing_pe | 37.12 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 14 | forward_pe | 31.45 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 15 | ps_ratio | 9.08 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 16 | pb_ratio | 61.11 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 17 | trailing_peg | 2.89 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 18 | forward_peg | 2.15 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 19 | earnings_growth | 0.1047 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 20 | revenue_growth | 0.0204 | - | 2025-01-11 | Yahoo Finance | Valuation |
+| 21 | vix | 15.45 | Daily | 2025-01-10 | FRED | Volatility |
+| 22 | vxn | 18.32 | Daily | 2025-01-10 | FRED | Volatility |
+| 23 | beta | 1.24 | 1Y | 2025-01-11 | Yahoo Finance | Volatility |
+| 24 | historical_volatility | 22.50 | 30D | 2025-01-11 | Yahoo Finance | Volatility |
+| 25 | implied_volatility | 30.00 | Forward | 2025-01-11 | Market Average | Volatility |
+| 26 | gdp_growth | 4.30 | Quarterly | 2024-Q3 | BEA | Macro |
+| 27 | interest_rate | 3.72 | Monthly | 2025-01-09 | FRED | Macro |
+| 28 | cpi_inflation | 2.74 | Monthly | 2024-12-01 | BLS | Macro |
+| 29 | unemployment | 4.40 | Monthly | 2024-12-01 | BLS | Macro |
 
 ---
 
-### Volatility Output
+### Qualitative Data
 
-```json
-{
-  "yahoo_finance": {
-    "source": "Yahoo Finance",
-    "data": {
-      "beta": {"value": 1.24},
-      "historical_volatility": {"value": 22.5},
-      "implied_volatility": {"value": null}
-    }
-  },
-  "market_volatility_context": {
-    "vix": {"value": 15.45, "date": "2025-01-10"},
-    "vxn": {"value": 18.32, "date": "2025-01-10"}
-  }
-}
-```
+| S/N | Title | Date | Source | Subreddit | URL | Category |
+|-----|-------|------|--------|-----------|-----|----------|
+| 1 | Apple Reports Record Q4 Earnings | 2025-01-10 | Tavily | - | [Link](https://...) | News |
+| 2 | Apple Stock Rises on Strong iPhone Sales | 2025-01-09 | NYT | - | [Link](https://...) | News |
+| 3 | AAPL Analysis: Buy or Hold? | 2025-01-08 | NewsAPI | - | [Link](https://...) | News |
+| 4 | Apple Announces New Product Line | 2025-01-10 | Finnhub | - | [Link](https://...) | Sentiment |
+| 5 | Apple's AI Strategy Impresses Analysts | 2025-01-09 | Finnhub | - | [Link](https://...) | Sentiment |
+| 6 | AAPL to the moon! | 2025-01-10 | Reddit | r/wallstreetbets | [Link](https://...) | Sentiment |
+| 7 | Why I'm bullish on Apple for 2025 | 2025-01-09 | Reddit | r/stocks | [Link](https://...) | Sentiment |
 
 ---
 
-### Macro Output
+### Streamed Metrics (Real-time)
 
-```json
-{
-  "bea_bls": {
-    "source": "BEA/BLS",
-    "data": {
-      "gdp_growth": {"value": 4.30, "date": "2024-09-01"},
-      "cpi_inflation": {"value": 2.74, "date": "2024-12-01"},
-      "unemployment": {"value": 4.40, "date": "2024-12-01"}
-    }
-  },
-  "fred": {
-    "source": "FRED",
-    "data": {
-      "interest_rate": {"value": 3.72, "date": "2025-01-09"}
-    }
-  }
-}
-```
+During task execution, these metrics are streamed to the frontend:
 
----
-
-### News Output
-
-```json
-{
-  "group": "content_analysis",
-  "ticker": "AAPL",
-  "items": [
-    {
-      "title": "Apple Reports Record Q4 Earnings",
-      "content": "Apple Inc. reported...",
-      "url": "https://...",
-      "datetime": "2025-01-10",
-      "source": "Tavily"
-    }
-  ],
-  "item_count": 10,
-  "sources_used": ["Tavily", "NYT", "NewsAPI"],
-  "source": "news-basket",
-  "as_of": "2025-01-11"
-}
-```
-
----
-
-### Sentiment Output
-
-```json
-{
-  "group": "content_analysis",
-  "ticker": "AAPL",
-  "items": [
-    {
-      "title": "AAPL to the moon!",
-      "content": "Just loaded up on more shares...",
-      "url": "https://reddit.com/r/wallstreetbets/...",
-      "datetime": "2025-01-10",
-      "source": "Reddit",
-      "subreddit": "r/wallstreetbets"
-    },
-    {
-      "title": "Apple Announces New Product Line",
-      "content": "Apple Inc. unveiled...",
-      "url": "https://finnhub.io/...",
-      "datetime": "2025-01-09",
-      "source": "Finnhub",
-      "subreddit": null
-    }
-  ],
-  "item_count": 15,
-  "sources_used": ["Finnhub", "Reddit"],
-  "source": "sentiment-basket",
-  "as_of": "2025-01-11"
-}
-```
-
----
-
-### Streamed Metrics (partial_metrics)
-
-During task execution, metrics are streamed as:
-
-```json
-{
-  "source": "fundamentals",
-  "metric": "revenue",
-  "value": 383285000000,
-  "timestamp": "2025-01-11T21:00:01",
-  "end_date": "2024-09-28",
-  "fiscal_year": 2024,
-  "form": "10-K"
-}
-```
-
-| Source | Metrics Streamed |
-|--------|------------------|
-| fundamentals | `revenue`, `net_margin` |
-| valuation | `P/E`, `P/B`, `P/S`, `EV/EBITDA` |
-| volatility | `VIX`, `beta`, `hist_vol` |
-| macro | `GDP_growth`, `interest_rate`, `inflation`, `unemployment` |
-| news | `items_found` (count) |
-| sentiment | `items_found` (count) |
+| S/N | Source | Metric | Example Value | Temporal Info |
+|-----|--------|--------|---------------|---------------|
+| 1 | fundamentals | revenue | 383,285,000,000 | FY 2024 |
+| 2 | fundamentals | net_margin | 24.45 | FY 2024 |
+| 3 | valuation | P/E | 37.12 | - |
+| 4 | valuation | P/B | 61.11 | - |
+| 5 | valuation | P/S | 9.08 | - |
+| 6 | volatility | VIX | 15.45 | - |
+| 7 | volatility | beta | 1.24 | - |
+| 8 | volatility | hist_vol | 22.50 | - |
+| 9 | macro | GDP_growth | 4.30 | - |
+| 10 | macro | interest_rate | 3.72 | - |
+| 11 | macro | inflation | 2.74 | - |
+| 12 | macro | unemployment | 4.40 | - |
+| 13 | news | items_found | 10 | - |
+| 14 | sentiment | items_found | 15 | - |
