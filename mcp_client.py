@@ -482,6 +482,7 @@ def _normalize_macro(raw: dict) -> dict:
 
     # BEA/BLS: GDP, CPI, unemployment (primary sources)
     # FRED: interest_rate (and fallback for others)
+    # Note: In get_all_sources_macro, "as_of" field contains the actual data date (e.g., "2025Q3")
     return {
         "bea_bls": {
             "source": "BEA/BLS",
@@ -639,23 +640,24 @@ async def _extract_and_emit_metrics(
         yf_data = _get_nested_value(result, "yahoo_finance", "data") or {}
         av_data = _get_nested_value(result, "alpha_vantage", "data") or {}
         market_ctx = result.get("market_volatility_context") or {}
+        # Each metric has its own date field (VIX uses "date", beta/hist_vol use "as_of")
 
-        # VIX from market context
+        # VIX from market context (normalized to have "date" field)
         vix = market_ctx.get("vix") or {}
         if isinstance(vix, dict) and vix.get("value") is not None:
-            await emit_metric(progress_callback, source, "VIX", vix["value"])
+            await emit_metric(progress_callback, source, "VIX", vix["value"], end_date=vix.get("date"))
 
-        # Beta - prefer Yahoo Finance
+        # Beta - prefer Yahoo Finance (raw dict has "as_of" field)
         beta = yf_data.get("beta") or av_data.get("beta")
         if isinstance(beta, dict) and beta.get("value") is not None:
-            await emit_metric(progress_callback, source, "beta", beta["value"])
+            await emit_metric(progress_callback, source, "beta", beta["value"], end_date=beta.get("as_of"))
         elif isinstance(beta, (int, float)):
             await emit_metric(progress_callback, source, "beta", beta)
 
-        # Historical Volatility
+        # Historical Volatility (raw dict has "as_of" field)
         hist_vol = yf_data.get("historical_volatility") or av_data.get("historical_volatility")
         if isinstance(hist_vol, dict) and hist_vol.get("value") is not None:
-            await emit_metric(progress_callback, source, "hist_vol", hist_vol["value"])
+            await emit_metric(progress_callback, source, "hist_vol", hist_vol["value"], end_date=hist_vol.get("as_of"))
         elif isinstance(hist_vol, (int, float)):
             await emit_metric(progress_callback, source, "hist_vol", hist_vol)
 
@@ -663,32 +665,33 @@ async def _extract_and_emit_metrics(
         # Multi-source: {"bea_bls": {"data": {...}}, "fred": {"data": {...}}}
         bea_bls = _get_nested_value(result, "bea_bls", "data") or {}
         fred = _get_nested_value(result, "fred", "data") or {}
+        # Each metric has its own "date" field (actual data date, e.g., Q3 2025)
 
         # GDP Growth - prefer BEA/BLS
         gdp = bea_bls.get("gdp_growth") or fred.get("gdp_growth") or {}
         if isinstance(gdp, dict) and gdp.get("value") is not None:
-            await emit_metric(progress_callback, source, "GDP_growth", gdp["value"])
+            await emit_metric(progress_callback, source, "GDP_growth", gdp["value"], end_date=gdp.get("date"))
         elif isinstance(gdp, (int, float)):
             await emit_metric(progress_callback, source, "GDP_growth", gdp)
 
         # Interest Rate - FRED only
         interest = fred.get("interest_rate") or {}
         if isinstance(interest, dict) and interest.get("value") is not None:
-            await emit_metric(progress_callback, source, "interest_rate", interest["value"])
+            await emit_metric(progress_callback, source, "interest_rate", interest["value"], end_date=interest.get("date"))
         elif isinstance(interest, (int, float)):
             await emit_metric(progress_callback, source, "interest_rate", interest)
 
         # Inflation (CPI)
         inflation = bea_bls.get("cpi_inflation") or fred.get("cpi_inflation") or {}
         if isinstance(inflation, dict) and inflation.get("value") is not None:
-            await emit_metric(progress_callback, source, "inflation", inflation["value"])
+            await emit_metric(progress_callback, source, "inflation", inflation["value"], end_date=inflation.get("date"))
         elif isinstance(inflation, (int, float)):
             await emit_metric(progress_callback, source, "inflation", inflation)
 
         # Unemployment
         unemployment = bea_bls.get("unemployment") or fred.get("unemployment") or {}
         if isinstance(unemployment, dict) and unemployment.get("value") is not None:
-            await emit_metric(progress_callback, source, "unemployment", unemployment["value"])
+            await emit_metric(progress_callback, source, "unemployment", unemployment["value"], end_date=unemployment.get("date"))
         elif isinstance(unemployment, (int, float)):
             await emit_metric(progress_callback, source, "unemployment", unemployment)
 
@@ -696,26 +699,28 @@ async def _extract_and_emit_metrics(
         # Multi-source: {"yahoo_finance": {"data": {...}}, "alpha_vantage": {"data": {...}}}
         yf_data = _get_nested_value(result, "yahoo_finance", "data") or {}
         av_data = _get_nested_value(result, "alpha_vantage", "data") or {}
+        # Use regular_market_time (actual market data timestamp) or fallback to as_of
+        market_time = _get_nested_value(result, "yahoo_finance", "regular_market_time") or result.get("as_of")
 
         # P/E Ratio - prefer Yahoo Finance
         pe_trailing = yf_data.get("trailing_pe") or av_data.get("trailing_pe")
         if pe_trailing is not None:
-            await emit_metric(progress_callback, source, "P/E", pe_trailing)
+            await emit_metric(progress_callback, source, "P/E", pe_trailing, end_date=market_time)
 
         # P/B Ratio
         pb_ratio = yf_data.get("pb_ratio") or av_data.get("pb_ratio")
         if pb_ratio is not None:
-            await emit_metric(progress_callback, source, "P/B", pb_ratio)
+            await emit_metric(progress_callback, source, "P/B", pb_ratio, end_date=market_time)
 
         # P/S Ratio
         ps_ratio = yf_data.get("ps_ratio") or av_data.get("ps_ratio")
         if ps_ratio is not None:
-            await emit_metric(progress_callback, source, "P/S", ps_ratio)
+            await emit_metric(progress_callback, source, "P/S", ps_ratio, end_date=market_time)
 
         # EV/EBITDA
         ev_ebitda = yf_data.get("ev_ebitda") or av_data.get("ev_ebitda")
         if ev_ebitda is not None:
-            await emit_metric(progress_callback, source, "EV/EBITDA", ev_ebitda)
+            await emit_metric(progress_callback, source, "EV/EBITDA", ev_ebitda, end_date=market_time)
 
     elif source == "news":
         # News-basket returns normalized "items" array
