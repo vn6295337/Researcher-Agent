@@ -534,6 +534,35 @@ def generate_report(results: List[MCPTestResult], ticker: str, company_name: str
         warnings = "; ".join(r.warnings) if r.warnings else "-"
         lines.append(f"| {i} | {r.name} | {r.status} | {expected} | {r.item_count} | {r.duration_ms}ms | {errors} | {warnings} |")
 
+    # Company Info (from fundamentals)
+    fund_result = next((r for r in results if r.name == "fundamentals"), None)
+    if fund_result and fund_result.data:
+        company = fund_result.data.get("company", {})
+        if company:
+            lines.extend([
+                "",
+                "---",
+                "",
+                "## Company Info",
+                "",
+                f"| Field | Value |",
+                f"|-------|-------|",
+                f"| Name | {company.get('name', '-')} |",
+                f"| CIK | {company.get('cik', '-')} |",
+                f"| SIC | {company.get('sic', '-')} ({company.get('sic_description', '-')}) |",
+                f"| State | {company.get('state_of_incorporation', '-')} |",
+                f"| Fiscal Year End | {company.get('fiscal_year_end', '-')} |",
+            ])
+            # Business address
+            addr = company.get("business_address", {})
+            if addr:
+                street = addr.get("street1", "")
+                if addr.get("street2"):
+                    street += f", {addr.get('street2')}"
+                city_state_zip = f"{addr.get('city', '')}, {addr.get('stateOrCountry', '')} {addr.get('zipCode', '')}"
+                lines.append(f"| Address | {street} |")
+                lines.append(f"| | {city_state_zip} |")
+
     # Quantitative Data
     lines.extend([
         "",

@@ -141,3 +141,260 @@ INSTANCE_PORTS = [8001, 8002, 8003]
 
 # Instance identification
 INSTANCE_ID = os.getenv("INSTANCE_ID", f"financials-default")
+
+# =============================================================================
+# INDUSTRY CLASSIFICATION (SIC Code Mapping)
+# =============================================================================
+
+# Specific 4-digit SIC codes that need special handling
+SIC_SPECIFIC_MAP = {
+    "6798": "REAL_ESTATE",   # Real Estate Investment Trusts (REITs)
+}
+
+# First 2 digits of SIC → Sector
+SIC_SECTOR_MAP = {
+    # Financials
+    "60": "BANKS",           # Depository Institutions
+    "61": "BANKS",           # Non-depository Credit
+    "62": "FINANCIALS",      # Securities & Commodities
+    "63": "INSURANCE",       # Insurance Carriers
+    "64": "INSURANCE",       # Insurance Agents
+    "65": "REAL_ESTATE",     # Real Estate
+    "67": "FINANCIALS",      # Holding & Investment (except 6798 REITs)
+
+    # Energy
+    "10": "MINING",
+    "12": "MINING",
+    "13": "OIL_GAS",         # Oil & Gas Extraction
+    "29": "OIL_GAS",         # Petroleum Refining
+    "49": "UTILITIES",       # Electric, Gas, Sanitary
+
+    # Technology
+    "35": "TECHNOLOGY",      # Industrial Machinery (computers)
+    "36": "TECHNOLOGY",      # Electronic Equipment
+    "38": "TECHNOLOGY",      # Instruments
+    "73": "TECHNOLOGY",      # Business Services (software)
+
+    # Healthcare
+    "28": "HEALTHCARE",      # Chemicals (pharma)
+    "80": "HEALTHCARE",      # Health Services
+
+    # Consumer
+    "52": "RETAIL",          # Building Materials Retail
+    "53": "RETAIL",          # General Merchandise
+    "54": "RETAIL",          # Food Stores
+    "56": "RETAIL",          # Apparel
+    "57": "RETAIL",          # Furniture
+    "58": "RETAIL",          # Eating Places
+    "59": "RETAIL",          # Misc Retail (incl. e-commerce)
+
+    # Industrials
+    "37": "INDUSTRIALS",     # Transportation Equipment
+    "40": "TRANSPORTATION",  # Railroad
+    "42": "TRANSPORTATION",  # Trucking
+    "44": "TRANSPORTATION",  # Water Transport
+    "45": "TRANSPORTATION",  # Air Transport
+
+    # Materials
+    "14": "MATERIALS",       # Mining (non-metallic)
+    "24": "MATERIALS",       # Lumber
+    "26": "MATERIALS",       # Paper
+    "32": "MATERIALS",       # Stone, Clay, Glass
+    "33": "MATERIALS",       # Primary Metals
+}
+
+
+def get_sector_from_sic(sic_code: str) -> str:
+    """Get sector classification from SIC code.
+
+    Checks 4-digit specific codes first (e.g., 6798 for REITs),
+    then falls back to 2-digit prefix mapping.
+    """
+    if not sic_code:
+        return "GENERAL"
+    sic_str = str(sic_code)
+
+    # Check 4-digit specific codes first
+    if sic_str in SIC_SPECIFIC_MAP:
+        return SIC_SPECIFIC_MAP[sic_str]
+
+    # Fall back to 2-digit prefix
+    prefix = sic_str[:2]
+    return SIC_SECTOR_MAP.get(prefix, "GENERAL")
+
+
+# =============================================================================
+# INDUSTRY-SPECIFIC XBRL CONCEPTS
+# =============================================================================
+
+# Insurance (SIC 63xx, 64xx)
+INSURANCE_CONCEPTS = {
+    "premiums_earned": ["PremiumsEarnedNet", "PremiumsWrittenNet", "PremiumsEarned"],
+    "claims_incurred": ["PolicyholderBenefitsAndClaimsIncurredNet", "BenefitsLossesAndExpenses",
+                        "PolicyholderBenefitsAndClaimsIncurredGross"],
+    "underwriting_income": ["UnderwritingIncomeLoss", "UnderwritingResultsPropertyCasualtyInsurance"],
+    "investment_income": ["NetInvestmentIncome", "InvestmentIncomeNet", "InvestmentIncomeInterestAndDividend"],
+    "loss_ratio": ["LossRatio", "InsuranceLossRatio"],
+    "policy_acquisition_costs": ["PolicyAcquisitionCosts", "DeferredPolicyAcquisitionCosts"],
+}
+
+# Banks (SIC 60xx, 61xx)
+BANK_CONCEPTS = {
+    "net_interest_income": ["InterestIncomeExpenseNet", "NetInterestIncome",
+                            "InterestIncomeExpenseAfterProvisionForLoanLoss"],
+    "provision_credit_losses": ["ProvisionForLoanLeaseAndOtherLosses", "ProvisionForCreditLosses",
+                                "ProvisionForLoanAndLeaseLosses"],
+    "noninterest_income": ["NoninterestIncome"],
+    "noninterest_expense": ["NoninterestExpense"],
+    "net_loans": ["LoansAndLeasesReceivableNetReportedAmount", "LoansReceivableNet",
+                  "LoansAndLeasesReceivableNetOfDeferredIncome"],
+    "deposits": ["Deposits", "DepositsDomestic"],
+    "tier1_capital_ratio": ["TierOneRiskBasedCapitalRatio", "CommonEquityTier1CapitalRatio"],
+    "net_charge_offs": ["AllowanceForLoanAndLeaseLossesWriteoffsNet", "ChargeOffsNet"],
+}
+
+# REITs (SIC 65xx, 67xx)
+REIT_CONCEPTS = {
+    "rental_revenue": ["OperatingLeaseLeaseIncome", "RentalRevenue", "RevenueFromContractWithCustomerExcludingAssessedTax"],
+    "noi": ["NetOperatingIncome", "OperatingIncomeLoss"],
+    "ffo": ["FundsFromOperations", "FundsFromOperationsPerShare"],
+    "property_operating_expenses": ["CostOfPropertyRepairsAndMaintenance", "RealEstateTaxExpense"],
+    "occupancy_rate": ["OccupancyRate"],
+    "same_store_noi": ["SameStoreNetOperatingIncome"],
+}
+
+# Energy - Oil & Gas (SIC 13xx, 29xx)
+ENERGY_OG_CONCEPTS = {
+    "oil_gas_revenue": ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues",
+                        "OilAndGasRevenue", "SalesRevenueNet"],
+    "production_expense": ["ProductionCosts", "LeaseOperatingExpense", "OilAndGasProductionExpense"],
+    "depletion": ["DepletionOfOilAndGasProperties", "DepreciationDepletionAndAmortization"],
+    "proved_reserves": ["ProvedDevelopedAndUndevelopedReserves", "ProvedReservesOil", "ProvedReservesGas"],
+    "exploration_expense": ["ExplorationExpense", "ExplorationCosts"],
+    "impairment": ["ImpairmentOfOilAndGasProperties", "AssetImpairmentCharges"],
+}
+
+# Utilities (SIC 49xx)
+UTILITY_CONCEPTS = {
+    "electric_revenue": ["ElectricUtilityRevenue", "RegulatedElectricRevenue", "ElectricDomesticRevenue"],
+    "gas_revenue": ["GasUtilityRevenue", "RegulatedGasRevenue", "GasDomesticRevenue"],
+    "fuel_cost": ["FuelCosts", "CostOfFuel", "FuelExpense"],
+    "purchased_power_cost": ["CostOfPurchasedPower", "PurchasedPowerCost"],
+    "regulatory_assets": ["RegulatoryAssets"],
+    "regulatory_liabilities": ["RegulatoryLiabilities"],
+    "rate_base": ["UtilityPlantNet", "ElectricUtilityPlantNet"],
+}
+
+# Technology (SIC 35xx, 36xx, 38xx, 73xx)
+TECHNOLOGY_CONCEPTS = {
+    "rd_expense": ["ResearchAndDevelopmentExpense", "ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost"],
+    "deferred_revenue": ["DeferredRevenue", "ContractWithCustomerLiability", "DeferredRevenueNoncurrent"],
+    "subscription_revenue": ["SubscriptionRevenue", "SaaSRevenue", "RecurringRevenue"],
+    "cost_of_revenue": ["CostOfRevenue", "CostOfGoodsAndServicesSold", "CostOfServices"],
+    "stock_compensation": ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"],
+    "intangible_assets": ["IntangibleAssetsNetExcludingGoodwill", "FiniteLivedIntangibleAssetsNet"],
+    "goodwill": ["Goodwill"],
+    "acquired_ip": ["BusinessCombinationRecognizedIdentifiableAssetsAcquiredAndLiabilitiesAssumedIntangibleAssetsOtherThanGoodwill"],
+}
+
+# Healthcare / Pharmaceuticals (SIC 28xx, 80xx)
+HEALTHCARE_CONCEPTS = {
+    "rd_expense": ["ResearchAndDevelopmentExpense", "ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost"],
+    "cost_of_revenue": ["CostOfRevenue", "CostOfGoodsAndServicesSold"],
+    "selling_general_admin": ["SellingGeneralAndAdministrativeExpense", "GeneralAndAdministrativeExpense"],
+    "acquired_iprd": ["ResearchAndDevelopmentInProcess", "AcquiredInProcessResearchAndDevelopment"],
+    "milestone_payments": ["CollaborativeArrangementMilestonePayments", "LicenseAndCollaborationRevenue"],
+    "inventory": ["InventoryNet", "InventoryFinishedGoodsNetOfReserves"],
+    "product_revenue": ["RevenueFromContractWithCustomerExcludingAssessedTax", "ProductSalesRevenue"],
+    "license_revenue": ["LicenseRevenue", "RoyaltyRevenue", "LicenseAndServicesRevenue"],
+}
+
+# Retail (SIC 52xx-59xx)
+RETAIL_CONCEPTS = {
+    "cost_of_goods_sold": ["CostOfGoodsSold", "CostOfGoodsAndServicesSold", "CostOfRevenue"],
+    "inventory": ["InventoryNet", "RetailRelatedInventoryMerchandise"],
+    "selling_general_admin": ["SellingGeneralAndAdministrativeExpense"],
+    "store_count": ["NumberOfStores", "NumberOfRestaurants"],
+    "depreciation": ["DepreciationAndAmortization", "Depreciation"],
+    "lease_expense": ["OperatingLeaseExpense", "OperatingLeaseCost", "LeaseAndRentalExpense"],
+    "same_store_sales": ["SameStoreSales", "ComparableStoreSalesGrowth"],
+    "ecommerce_revenue": ["OnlineRevenue", "DigitalRevenue", "ECommerceRevenue"],
+}
+
+# Financials - Non-Bank (SIC 62xx, 67xx - Securities, Asset Management)
+FINANCIALS_CONCEPTS = {
+    "advisory_fees": ["InvestmentAdvisoryFees", "AssetManagementFees", "AdvisoryFees"],
+    "assets_under_management": ["AssetsUnderManagement", "ClientAssetsUnderManagement"],
+    "trading_revenue": ["PrincipalTransactionsRevenue", "TradingRevenue", "GainLossOnInvestments"],
+    "commission_revenue": ["CommissionsAndFees", "BrokerageCommissionsRevenue"],
+    "compensation_expense": ["LaborAndRelatedExpense", "CompensationAndBenefitsExpense", "EmployeeBenefitsAndShareBasedCompensation"],
+    "investment_income": ["InvestmentIncomeNet", "NetInvestmentIncome"],
+    "performance_fees": ["IncentiveFeeRevenue", "PerformanceBasedFees"],
+    "fund_expenses": ["FundExpenses", "InvestmentCompanyGeneralPartnerAdvisoryService"],
+}
+
+# Industrials / Manufacturing (SIC 37xx)
+INDUSTRIALS_CONCEPTS = {
+    "cost_of_goods_sold": ["CostOfGoodsSold", "CostOfGoodsAndServicesSold"],
+    "inventory": ["InventoryNet", "InventoryRawMaterialsAndSupplies", "InventoryWorkInProcess", "InventoryFinishedGoods"],
+    "depreciation": ["DepreciationAndAmortization", "Depreciation"],
+    "backlog": ["Backlog", "UnfilledOrders", "OrderBacklog"],
+    "capital_expenditure": ["PaymentsToAcquirePropertyPlantAndEquipment", "CapitalExpendituresIncurredButNotYetPaid"],
+    "property_plant_equipment": ["PropertyPlantAndEquipmentNet", "PropertyPlantAndEquipmentGross"],
+    "pension_expense": ["DefinedBenefitPlanNetPeriodicBenefitCost", "PensionAndOtherPostretirementBenefitExpense"],
+    "warranty_expense": ["ProductWarrantyExpense", "StandardProductWarrantyAccrual"],
+}
+
+# Transportation (SIC 40xx-45xx)
+TRANSPORTATION_CONCEPTS = {
+    "operating_revenue": ["OperatingRevenue", "RevenueFromContractWithCustomerExcludingAssessedTax"],
+    "fuel_expense": ["AircraftFuelExpense", "FuelCosts", "FuelExpense"],
+    "labor_expense": ["SalariesWagesAndBenefits", "LaborAndRelatedExpense"],
+    "depreciation": ["DepreciationAndAmortization", "Depreciation"],
+    "maintenance_expense": ["AircraftMaintenanceMaterialsAndRepairs", "MaintenanceAndRepairsExpense"],
+    "revenue_passenger_miles": ["RevenuePassengerMiles", "PassengerRevenueMiles"],
+    "available_seat_miles": ["AvailableSeatMiles", "AvailableSeatMilesASMs"],
+    "load_factor": ["PassengerLoadFactor", "LoadFactor"],
+    "fleet_size": ["NumberOfAircraft", "FleetSize"],
+}
+
+# Materials (SIC 14xx, 24xx, 26xx, 32xx, 33xx)
+MATERIALS_CONCEPTS = {
+    "cost_of_goods_sold": ["CostOfGoodsSold", "CostOfGoodsAndServicesSold"],
+    "inventory": ["InventoryNet", "InventoryRawMaterialsAndSupplies"],
+    "depreciation": ["DepreciationDepletionAndAmortization", "DepreciationAndAmortization"],
+    "energy_costs": ["UtilitiesExpense", "EnergyCosts", "NaturalGasPurchases"],
+    "environmental_liabilities": ["AccruedEnvironmentalLossContingencies", "EnvironmentalLossContingencyStatementOfFinancialPositionExtensibleListNotDisclosed"],
+    "property_plant_equipment": ["PropertyPlantAndEquipmentNet"],
+    "capital_expenditure": ["PaymentsToAcquirePropertyPlantAndEquipment"],
+    "raw_materials": ["InventoryRawMaterialsAndSupplies", "RawMaterials"],
+}
+
+# Mining (SIC 10xx, 12xx)
+MINING_CONCEPTS = {
+    "mining_revenue": ["RevenueFromContractWithCustomerExcludingAssessedTax", "MiningRevenue", "Revenues"],
+    "cost_of_production": ["CostOfGoodsSold", "ProductionCosts", "MiningCosts"],
+    "depletion": ["DepletionOfMinesAndMineralDeposits", "DepreciationDepletionAndAmortization"],
+    "exploration_expense": ["ExplorationExpense", "MineralExplorationCosts", "ExplorationCosts"],
+    "reclamation_liabilities": ["AssetRetirementObligation", "MineReclamationAndClosingLiability"],
+    "mineral_reserves": ["ProvedAndProbableMineralReserves", "MineralReserves"],
+    "depreciation": ["DepreciationAndAmortization"],
+    "royalty_expense": ["RoyaltyExpense", "MiningRoyalties"],
+}
+
+# Map sector to concept dictionary
+INDUSTRY_CONCEPTS = {
+    "INSURANCE": INSURANCE_CONCEPTS,
+    "BANKS": BANK_CONCEPTS,
+    "REAL_ESTATE": REIT_CONCEPTS,
+    "OIL_GAS": ENERGY_OG_CONCEPTS,
+    "UTILITIES": UTILITY_CONCEPTS,
+    "TECHNOLOGY": TECHNOLOGY_CONCEPTS,
+    "HEALTHCARE": HEALTHCARE_CONCEPTS,
+    "RETAIL": RETAIL_CONCEPTS,
+    "FINANCIALS": FINANCIALS_CONCEPTS,
+    "INDUSTRIALS": INDUSTRIALS_CONCEPTS,
+    "TRANSPORTATION": TRANSPORTATION_CONCEPTS,
+    "MATERIALS": MATERIALS_CONCEPTS,
+    "MINING": MINING_CONCEPTS,
+}

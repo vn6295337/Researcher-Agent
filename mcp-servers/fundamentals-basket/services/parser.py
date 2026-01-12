@@ -25,6 +25,21 @@ from config import (
     DEBT_TO_EQUITY_ELEVATED,
     DEBT_TO_EQUITY_LOW,
     RD_HIGH_INVESTMENT,
+    # Industry-specific concepts
+    INDUSTRY_CONCEPTS,
+    INSURANCE_CONCEPTS,
+    BANK_CONCEPTS,
+    REIT_CONCEPTS,
+    ENERGY_OG_CONCEPTS,
+    UTILITY_CONCEPTS,
+    TECHNOLOGY_CONCEPTS,
+    HEALTHCARE_CONCEPTS,
+    RETAIL_CONCEPTS,
+    FINANCIALS_CONCEPTS,
+    INDUSTRIALS_CONCEPTS,
+    TRANSPORTATION_CONCEPTS,
+    MATERIALS_CONCEPTS,
+    MINING_CONCEPTS,
 )
 from models.schemas import (
     TemporalMetric,
@@ -322,7 +337,9 @@ class ParserService:
     def parse_financials(
         self,
         facts: Dict[str, Any],
-        ticker: str
+        ticker: str,
+        sector: str = "GENERAL",
+        sic_code: str = ""
     ) -> ParsedFinancials:
         """
         Parse financial metrics from XBRL facts.
@@ -330,11 +347,13 @@ class ParserService:
         Args:
             facts: Company facts dict from SEC EDGAR
             ticker: Stock ticker symbol
+            sector: Industry sector (INSURANCE, BANKS, REAL_ESTATE, OIL_GAS, UTILITIES, GENERAL)
+            sic_code: SIC code from SEC EDGAR
 
         Returns:
-            ParsedFinancials with all metrics
+            ParsedFinancials with all metrics (universal + industry-specific)
         """
-        # Extract core metrics
+        # Extract core metrics (universal)
         revenue = self.get_latest_value(facts, REVENUE_CONCEPTS)
         net_income = self.get_latest_value(facts, NET_INCOME_CONCEPTS)
         gross_profit = self.get_latest_value(facts, GROSS_PROFIT_CONCEPTS)
@@ -373,6 +392,50 @@ class ParserService:
         if revenue_growth_val is not None:
             revenue_growth_3yr = self.create_temporal_metric(revenue_growth_val, revenue)
 
+        # Initialize industry-specific fields
+        industry_metrics = {}
+
+        # Extract industry-specific metrics based on sector
+        if sector == "INSURANCE":
+            industry_metrics = self._extract_insurance_metrics(facts)
+            logger.info(f"Extracted insurance metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "BANKS":
+            industry_metrics = self._extract_bank_metrics(facts)
+            logger.info(f"Extracted bank metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "REAL_ESTATE":
+            industry_metrics = self._extract_reit_metrics(facts)
+            logger.info(f"Extracted REIT metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "OIL_GAS":
+            industry_metrics = self._extract_energy_metrics(facts)
+            logger.info(f"Extracted energy metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "UTILITIES":
+            industry_metrics = self._extract_utility_metrics(facts)
+            logger.info(f"Extracted utility metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "TECHNOLOGY":
+            industry_metrics = self._extract_technology_metrics(facts)
+            logger.info(f"Extracted technology metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "HEALTHCARE":
+            industry_metrics = self._extract_healthcare_metrics(facts)
+            logger.info(f"Extracted healthcare metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "RETAIL":
+            industry_metrics = self._extract_retail_metrics(facts)
+            logger.info(f"Extracted retail metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "FINANCIALS":
+            industry_metrics = self._extract_financials_metrics(facts)
+            logger.info(f"Extracted financials metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "INDUSTRIALS":
+            industry_metrics = self._extract_industrials_metrics(facts)
+            logger.info(f"Extracted industrials metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "TRANSPORTATION":
+            industry_metrics = self._extract_transportation_metrics(facts)
+            logger.info(f"Extracted transportation metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "MATERIALS":
+            industry_metrics = self._extract_materials_metrics(facts)
+            logger.info(f"Extracted materials metrics for {ticker}: {list(industry_metrics.keys())}")
+        elif sector == "MINING":
+            industry_metrics = self._extract_mining_metrics(facts)
+            logger.info(f"Extracted mining metrics for {ticker}: {list(industry_metrics.keys())}")
+
         return ParsedFinancials(
             ticker=ticker.upper(),
             revenue=revenue,
@@ -387,7 +450,170 @@ class ParserService:
             total_liabilities=total_liabilities,
             stockholders_equity=stockholders_equity,
             source="SEC EDGAR XBRL",
+            sector=sector,
+            sic_code=sic_code,
+            **industry_metrics,
         )
+
+    # =========================================================================
+    # INDUSTRY-SPECIFIC EXTRACTION METHODS
+    # =========================================================================
+
+    def _extract_insurance_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract insurance-specific metrics from XBRL facts."""
+        return {
+            "premiums_earned": self.get_latest_value(facts, INSURANCE_CONCEPTS["premiums_earned"]),
+            "claims_incurred": self.get_latest_value(facts, INSURANCE_CONCEPTS["claims_incurred"]),
+            "underwriting_income": self.get_latest_value(facts, INSURANCE_CONCEPTS["underwriting_income"]),
+            "investment_income": self.get_latest_value(facts, INSURANCE_CONCEPTS["investment_income"]),
+            "policy_acquisition_costs": self.get_latest_value(facts, INSURANCE_CONCEPTS["policy_acquisition_costs"]),
+        }
+
+    def _extract_bank_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract bank-specific metrics from XBRL facts."""
+        return {
+            "net_interest_income": self.get_latest_value(facts, BANK_CONCEPTS["net_interest_income"]),
+            "provision_credit_losses": self.get_latest_value(facts, BANK_CONCEPTS["provision_credit_losses"]),
+            "noninterest_income": self.get_latest_value(facts, BANK_CONCEPTS["noninterest_income"]),
+            "noninterest_expense": self.get_latest_value(facts, BANK_CONCEPTS["noninterest_expense"]),
+            "net_loans": self.get_latest_value(facts, BANK_CONCEPTS["net_loans"]),
+            "deposits": self.get_latest_value(facts, BANK_CONCEPTS["deposits"]),
+            "tier1_capital_ratio": self.get_latest_value(facts, BANK_CONCEPTS["tier1_capital_ratio"], unit="pure"),
+        }
+
+    def _extract_reit_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract REIT-specific metrics from XBRL facts."""
+        return {
+            "rental_revenue": self.get_latest_value(facts, REIT_CONCEPTS["rental_revenue"]),
+            "noi": self.get_latest_value(facts, REIT_CONCEPTS["noi"]),
+            "ffo": self.get_latest_value(facts, REIT_CONCEPTS["ffo"]),
+            "property_operating_expenses": self.get_latest_value(facts, REIT_CONCEPTS["property_operating_expenses"]),
+        }
+
+    def _extract_energy_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract energy/oil & gas-specific metrics from XBRL facts."""
+        return {
+            "oil_gas_revenue": self.get_latest_value(facts, ENERGY_OG_CONCEPTS["oil_gas_revenue"]),
+            "production_expense": self.get_latest_value(facts, ENERGY_OG_CONCEPTS["production_expense"]),
+            "depletion": self.get_latest_value(facts, ENERGY_OG_CONCEPTS["depletion"]),
+            "exploration_expense": self.get_latest_value(facts, ENERGY_OG_CONCEPTS["exploration_expense"]),
+            "impairment": self.get_latest_value(facts, ENERGY_OG_CONCEPTS["impairment"]),
+        }
+
+    def _extract_utility_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract utility-specific metrics from XBRL facts."""
+        return {
+            "electric_revenue": self.get_latest_value(facts, UTILITY_CONCEPTS["electric_revenue"]),
+            "gas_revenue": self.get_latest_value(facts, UTILITY_CONCEPTS["gas_revenue"]),
+            "fuel_cost": self.get_latest_value(facts, UTILITY_CONCEPTS["fuel_cost"]),
+            "regulatory_assets": self.get_latest_value(facts, UTILITY_CONCEPTS["regulatory_assets"]),
+            "rate_base": self.get_latest_value(facts, UTILITY_CONCEPTS["rate_base"]),
+        }
+
+    def _extract_technology_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract technology-specific metrics from XBRL facts."""
+        return {
+            "rd_expense": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["rd_expense"]),
+            "deferred_revenue": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["deferred_revenue"]),
+            "subscription_revenue": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["subscription_revenue"]),
+            "cost_of_revenue": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["cost_of_revenue"]),
+            "stock_compensation": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["stock_compensation"]),
+            "intangible_assets": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["intangible_assets"]),
+            "goodwill": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["goodwill"]),
+            "acquired_ip": self.get_latest_value(facts, TECHNOLOGY_CONCEPTS["acquired_ip"]),
+        }
+
+    def _extract_healthcare_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract healthcare/pharma-specific metrics from XBRL facts."""
+        return {
+            "rd_expense": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["rd_expense"]),
+            "cost_of_revenue": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["cost_of_revenue"]),
+            "selling_general_admin": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["selling_general_admin"]),
+            "acquired_iprd": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["acquired_iprd"]),
+            "milestone_payments": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["milestone_payments"]),
+            "inventory": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["inventory"]),
+            "product_revenue": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["product_revenue"]),
+            "license_revenue": self.get_latest_value(facts, HEALTHCARE_CONCEPTS["license_revenue"]),
+        }
+
+    def _extract_retail_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract retail-specific metrics from XBRL facts."""
+        return {
+            "cost_of_goods_sold": self.get_latest_value(facts, RETAIL_CONCEPTS["cost_of_goods_sold"]),
+            "inventory": self.get_latest_value(facts, RETAIL_CONCEPTS["inventory"]),
+            "selling_general_admin": self.get_latest_value(facts, RETAIL_CONCEPTS["selling_general_admin"]),
+            "store_count": self.get_latest_value(facts, RETAIL_CONCEPTS["store_count"], unit="pure"),
+            "depreciation": self.get_latest_value(facts, RETAIL_CONCEPTS["depreciation"]),
+            "lease_expense": self.get_latest_value(facts, RETAIL_CONCEPTS["lease_expense"]),
+            "same_store_sales": self.get_latest_value(facts, RETAIL_CONCEPTS["same_store_sales"], unit="pure"),
+            "ecommerce_revenue": self.get_latest_value(facts, RETAIL_CONCEPTS["ecommerce_revenue"]),
+        }
+
+    def _extract_financials_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract financials (non-bank) metrics from XBRL facts."""
+        return {
+            "advisory_fees": self.get_latest_value(facts, FINANCIALS_CONCEPTS["advisory_fees"]),
+            "assets_under_management": self.get_latest_value(facts, FINANCIALS_CONCEPTS["assets_under_management"]),
+            "trading_revenue": self.get_latest_value(facts, FINANCIALS_CONCEPTS["trading_revenue"]),
+            "commission_revenue": self.get_latest_value(facts, FINANCIALS_CONCEPTS["commission_revenue"]),
+            "compensation_expense": self.get_latest_value(facts, FINANCIALS_CONCEPTS["compensation_expense"]),
+            "investment_income": self.get_latest_value(facts, FINANCIALS_CONCEPTS["investment_income"]),
+            "performance_fees": self.get_latest_value(facts, FINANCIALS_CONCEPTS["performance_fees"]),
+            "fund_expenses": self.get_latest_value(facts, FINANCIALS_CONCEPTS["fund_expenses"]),
+        }
+
+    def _extract_industrials_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract industrials/manufacturing metrics from XBRL facts."""
+        return {
+            "cost_of_goods_sold": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["cost_of_goods_sold"]),
+            "inventory": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["inventory"]),
+            "depreciation": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["depreciation"]),
+            "backlog": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["backlog"]),
+            "capital_expenditure": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["capital_expenditure"]),
+            "property_plant_equipment": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["property_plant_equipment"]),
+            "pension_expense": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["pension_expense"]),
+            "warranty_expense": self.get_latest_value(facts, INDUSTRIALS_CONCEPTS["warranty_expense"]),
+        }
+
+    def _extract_transportation_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract transportation-specific metrics from XBRL facts."""
+        return {
+            "operating_revenue": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["operating_revenue"]),
+            "fuel_expense": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["fuel_expense"]),
+            "labor_expense": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["labor_expense"]),
+            "depreciation": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["depreciation"]),
+            "maintenance_expense": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["maintenance_expense"]),
+            "revenue_passenger_miles": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["revenue_passenger_miles"], unit="pure"),
+            "available_seat_miles": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["available_seat_miles"], unit="pure"),
+            "load_factor": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["load_factor"], unit="pure"),
+            "fleet_size": self.get_latest_value(facts, TRANSPORTATION_CONCEPTS["fleet_size"], unit="pure"),
+        }
+
+    def _extract_materials_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract materials-specific metrics from XBRL facts."""
+        return {
+            "cost_of_goods_sold": self.get_latest_value(facts, MATERIALS_CONCEPTS["cost_of_goods_sold"]),
+            "inventory": self.get_latest_value(facts, MATERIALS_CONCEPTS["inventory"]),
+            "depreciation": self.get_latest_value(facts, MATERIALS_CONCEPTS["depreciation"]),
+            "energy_costs": self.get_latest_value(facts, MATERIALS_CONCEPTS["energy_costs"]),
+            "environmental_liabilities": self.get_latest_value(facts, MATERIALS_CONCEPTS["environmental_liabilities"]),
+            "property_plant_equipment": self.get_latest_value(facts, MATERIALS_CONCEPTS["property_plant_equipment"]),
+            "capital_expenditure": self.get_latest_value(facts, MATERIALS_CONCEPTS["capital_expenditure"]),
+            "raw_materials": self.get_latest_value(facts, MATERIALS_CONCEPTS["raw_materials"]),
+        }
+
+    def _extract_mining_metrics(self, facts: Dict[str, Any]) -> Dict[str, Optional[TemporalMetric]]:
+        """Extract mining-specific metrics from XBRL facts."""
+        return {
+            "mining_revenue": self.get_latest_value(facts, MINING_CONCEPTS["mining_revenue"]),
+            "cost_of_production": self.get_latest_value(facts, MINING_CONCEPTS["cost_of_production"]),
+            "depletion": self.get_latest_value(facts, MINING_CONCEPTS["depletion"]),
+            "exploration_expense": self.get_latest_value(facts, MINING_CONCEPTS["exploration_expense"]),
+            "reclamation_liabilities": self.get_latest_value(facts, MINING_CONCEPTS["reclamation_liabilities"]),
+            "mineral_reserves": self.get_latest_value(facts, MINING_CONCEPTS["mineral_reserves"], unit="pure"),
+            "depreciation": self.get_latest_value(facts, MINING_CONCEPTS["depreciation"]),
+            "royalty_expense": self.get_latest_value(facts, MINING_CONCEPTS["royalty_expense"]),
+        }
 
     def parse_debt_metrics(
         self,

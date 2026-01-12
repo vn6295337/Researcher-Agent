@@ -13,7 +13,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-from config import TOOL_TIMEOUT
+from config import TOOL_TIMEOUT, get_sector_from_sic
 from models.schemas import (
     TemporalMetric,
     ParsedFinancials,
@@ -97,6 +97,7 @@ class OrchestratorService:
                 "sic_description": submissions.get("sicDescription"),
                 "state_of_incorporation": submissions.get("stateOfIncorporation"),
                 "fiscal_year_end": submissions.get("fiscalYearEnd"),
+                "business_address": submissions.get("addresses", {}).get("business", {}),
                 "source": "SEC EDGAR",
             }
 
@@ -141,8 +142,14 @@ class OrchestratorService:
             if not facts:
                 return await self._get_yfinance_financials(ticker)
 
-            # Parse financials
-            financials = self.parser.parse_financials(facts, ticker)
+            # Get company info for SIC-based sector detection
+            company_info = await self.get_company_info(ticker)
+            sic_code = company_info.get("sic", "")
+            sector = get_sector_from_sic(sic_code)
+            logger.info(f"Detected sector for {ticker}: {sector} (SIC: {sic_code})")
+
+            # Parse financials with industry-specific metrics
+            financials = self.parser.parse_financials(facts, ticker, sector=sector, sic_code=sic_code)
             return financials.to_dict()
 
         except (APITimeoutError, CircuitOpenError) as e:
@@ -261,16 +268,19 @@ class OrchestratorService:
         if not facts:
             raise ValueError("No company facts available")
 
-        # Parse all metrics
-        financials = self.parser.parse_financials(facts, ticker)
+        # Get company info for SIC-based sector detection
+        company_info = await self.get_company_info(ticker)
+        sic_code = company_info.get("sic", "")
+        sector = get_sector_from_sic(sic_code)
+        logger.info(f"SEC Basket - Detected sector for {ticker}: {sector} (SIC: {sic_code})")
+
+        # Parse all metrics with industry-specific extraction
+        financials = self.parser.parse_financials(facts, ticker, sector=sector, sic_code=sic_code)
         debt = self.parser.parse_debt_metrics(facts, ticker)
         cash_flow = self.parser.parse_cash_flow(facts, ticker)
 
         # Build SWOT
         swot = self.parser.build_swot_summary(financials, debt, cash_flow)
-
-        # Get company info
-        company_info = await self.get_company_info(ticker)
 
         # Build basket
         basket = FinancialsBasket(
@@ -396,16 +406,20 @@ class OrchestratorService:
                     "data": yahoo_result.get("data"),
                 }
 
+        # Get company info for response (includes business_address)
+        company_info = await self.get_company_info(ticker)
+
         return {
             "group": "source_comparison",
             "ticker": ticker,
+            "company": company_info,
             "sources": sources,
             "source": "fundamentals-basket",
             "as_of": datetime.now().strftime("%Y-%m-%d"),
         }
 
     async def _get_sec_data_safe(self, ticker: str) -> Dict[str, Any]:
-        """Get SEC data with error handling. Returns 6 universal metrics only."""
+        """Get SEC data with error handling. Returns universal + industry-specific metrics."""
         try:
             cik = await self._get_cik_with_cache(ticker)
             if not cik:
@@ -415,7 +429,12 @@ class OrchestratorService:
             if not facts:
                 return {"error": "No facts available", "source": "SEC EDGAR"}
 
-            financials = self.parser.parse_financials(facts, ticker)
+            # Get company info for SIC-based sector detection
+            company_info = await self.get_company_info(ticker)
+            sic_code = company_info.get("sic", "")
+            sector = get_sector_from_sic(sic_code)
+
+            financials = self.parser.parse_financials(facts, ticker, sector=sector, sic_code=sic_code)
 
             # Helper to convert TemporalMetric to dict (include all temporal fields)
             def to_metric_dict(tm):
@@ -429,18 +448,112 @@ class OrchestratorService:
                     "form": tm.form,
                 }
 
-            # Only 6 universal metrics (works across all industries)
+            # Universal metrics (works across all industries)
+            data = {
+                "revenue": to_metric_dict(financials.revenue),
+                "net_income": to_metric_dict(financials.net_income),
+                "net_margin_pct": to_metric_dict(financials.net_margin_pct),
+                "total_assets": to_metric_dict(financials.total_assets),
+                "total_liabilities": to_metric_dict(financials.total_liabilities),
+                "stockholders_equity": to_metric_dict(financials.stockholders_equity),
+            }
+
+            # Add industry-specific metrics if available
+            if sector == "INSURANCE":
+                data.update({
+                    "premiums_earned": to_metric_dict(financials.premiums_earned),
+                    "claims_incurred": to_metric_dict(financials.claims_incurred),
+                    "underwriting_income": to_metric_dict(financials.underwriting_income),
+                    "investment_income": to_metric_dict(financials.investment_income),
+                })
+            elif sector == "BANKS":
+                data.update({
+                    "net_interest_income": to_metric_dict(financials.net_interest_income),
+                    "provision_credit_losses": to_metric_dict(financials.provision_credit_losses),
+                    "noninterest_income": to_metric_dict(financials.noninterest_income),
+                    "deposits": to_metric_dict(financials.deposits),
+                })
+            elif sector == "REAL_ESTATE":
+                data.update({
+                    "rental_revenue": to_metric_dict(financials.rental_revenue),
+                    "noi": to_metric_dict(financials.noi),
+                    "ffo": to_metric_dict(financials.ffo),
+                })
+            elif sector == "OIL_GAS":
+                data.update({
+                    "oil_gas_revenue": to_metric_dict(financials.oil_gas_revenue),
+                    "production_expense": to_metric_dict(financials.production_expense),
+                    "depletion": to_metric_dict(financials.depletion),
+                })
+            elif sector == "UTILITIES":
+                data.update({
+                    "electric_revenue": to_metric_dict(financials.electric_revenue),
+                    "gas_revenue": to_metric_dict(financials.gas_revenue),
+                    "fuel_cost": to_metric_dict(financials.fuel_cost),
+                })
+            elif sector == "TECHNOLOGY":
+                data.update({
+                    "rd_expense": to_metric_dict(financials.rd_expense),
+                    "deferred_revenue": to_metric_dict(financials.deferred_revenue),
+                    "cost_of_revenue": to_metric_dict(financials.cost_of_revenue),
+                    "goodwill": to_metric_dict(financials.goodwill),
+                })
+            elif sector == "HEALTHCARE":
+                data.update({
+                    "rd_expense": to_metric_dict(financials.rd_expense),
+                    "cost_of_revenue": to_metric_dict(financials.cost_of_revenue),
+                    "inventory": to_metric_dict(financials.inventory),
+                    "selling_general_admin": to_metric_dict(financials.selling_general_admin),
+                })
+            elif sector == "RETAIL":
+                data.update({
+                    "cost_of_goods_sold": to_metric_dict(financials.cost_of_goods_sold),
+                    "inventory": to_metric_dict(financials.inventory),
+                    "selling_general_admin": to_metric_dict(financials.selling_general_admin),
+                    "depreciation": to_metric_dict(financials.depreciation),
+                })
+            elif sector == "FINANCIALS":
+                data.update({
+                    "advisory_fees": to_metric_dict(financials.advisory_fees),
+                    "trading_revenue": to_metric_dict(financials.trading_revenue),
+                    "compensation_expense": to_metric_dict(financials.compensation_expense),
+                    "investment_income": to_metric_dict(financials.investment_income),
+                })
+            elif sector == "INDUSTRIALS":
+                data.update({
+                    "cost_of_goods_sold": to_metric_dict(financials.cost_of_goods_sold),
+                    "inventory": to_metric_dict(financials.inventory),
+                    "backlog": to_metric_dict(financials.backlog),
+                    "capital_expenditure": to_metric_dict(financials.capital_expenditure),
+                })
+            elif sector == "TRANSPORTATION":
+                data.update({
+                    "operating_revenue": to_metric_dict(financials.operating_revenue),
+                    "fuel_expense": to_metric_dict(financials.fuel_expense),
+                    "labor_expense": to_metric_dict(financials.labor_expense),
+                    "depreciation": to_metric_dict(financials.depreciation),
+                })
+            elif sector == "MATERIALS":
+                data.update({
+                    "cost_of_goods_sold": to_metric_dict(financials.cost_of_goods_sold),
+                    "inventory": to_metric_dict(financials.inventory),
+                    "depreciation": to_metric_dict(financials.depreciation),
+                    "capital_expenditure": to_metric_dict(financials.capital_expenditure),
+                })
+            elif sector == "MINING":
+                data.update({
+                    "mining_revenue": to_metric_dict(financials.mining_revenue),
+                    "cost_of_production": to_metric_dict(financials.cost_of_production),
+                    "depletion": to_metric_dict(financials.depletion),
+                    "exploration_expense": to_metric_dict(financials.exploration_expense),
+                })
+
             return {
                 "source": "SEC EDGAR XBRL",
                 "as_of": datetime.now().strftime("%Y-%m-%d"),
-                "data": {
-                    "revenue": to_metric_dict(financials.revenue),
-                    "net_income": to_metric_dict(financials.net_income),
-                    "net_margin_pct": to_metric_dict(financials.net_margin_pct),
-                    "total_assets": to_metric_dict(financials.total_assets),
-                    "total_liabilities": to_metric_dict(financials.total_liabilities),
-                    "stockholders_equity": to_metric_dict(financials.stockholders_equity),
-                },
+                "sector": sector,
+                "sic_code": sic_code,
+                "data": data,
             }
 
         except Exception as e:
