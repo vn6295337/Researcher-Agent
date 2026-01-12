@@ -417,7 +417,7 @@ class OrchestratorService:
 
             financials = self.parser.parse_financials(facts, ticker)
 
-            # Helper to convert TemporalMetric to dict
+            # Helper to convert TemporalMetric to dict (include all temporal fields)
             def to_metric_dict(tm):
                 if tm is None:
                     return None
@@ -425,6 +425,8 @@ class OrchestratorService:
                     "value": tm.value,
                     "end_date": tm.end_date,
                     "data_type": tm.data_type,
+                    "fiscal_year": tm.fiscal_year,
+                    "form": tm.form,
                 }
 
             # Only 6 universal metrics (works across all industries)
@@ -455,7 +457,7 @@ class OrchestratorService:
 
             financials, debt, cash_flow = self.parser.parse_yfinance_data(data, ticker)
 
-            # Helper to convert TemporalMetric to dict
+            # Helper to convert TemporalMetric to dict (include all temporal fields)
             def to_metric_dict(tm):
                 if tm is None:
                     return None
@@ -463,6 +465,8 @@ class OrchestratorService:
                     "value": tm.value,
                     "end_date": tm.end_date,
                     "data_type": tm.data_type,
+                    "fiscal_year": tm.fiscal_year,
+                    "form": tm.form,
                 }
 
             # Only supplementary metrics not in SEC EDGAR (avoid duplicates)
@@ -491,6 +495,7 @@ class OrchestratorService:
 
             financials, debt, cash_flow = self.parser.parse_yfinance_data(data, ticker)
 
+            # Helper to convert TemporalMetric to dict (include all temporal fields)
             def to_metric_dict(tm):
                 if tm is None:
                     return None
@@ -498,6 +503,8 @@ class OrchestratorService:
                     "value": tm.value,
                     "end_date": tm.end_date,
                     "data_type": tm.data_type,
+                    "fiscal_year": tm.fiscal_year,
+                    "form": tm.form,
                 }
 
             # FALLBACK: Core metrics + supplementary metrics
