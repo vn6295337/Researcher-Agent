@@ -425,6 +425,8 @@ class OrchestratorService:
                     "value": tm.value,
                     "end_date": tm.end_date,
                     "data_type": tm.data_type,
+                    "fiscal_year": tm.fiscal_year,
+                    "form": tm.form,
                 }
 
             # Only 6 universal metrics (works across all industries)
@@ -463,6 +465,8 @@ class OrchestratorService:
                     "value": tm.value,
                     "end_date": tm.end_date,
                     "data_type": tm.data_type,
+                    "fiscal_year": tm.fiscal_year,
+                    "form": tm.form,
                 }
 
             # Only supplementary metrics not in SEC EDGAR (avoid duplicates)
