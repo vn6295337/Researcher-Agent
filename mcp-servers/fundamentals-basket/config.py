@@ -10,7 +10,7 @@ and SWOT analysis thresholds.
 # =============================================================================
 
 # Global timeout for MCP tool execution
-TOOL_TIMEOUT = 60.0
+TOOL_TIMEOUT = 90.0  # Match mcp_client timeout
 
 # Per-source timeouts (increased for reliability)
 SEC_EDGAR_TIMEOUT = 30.0

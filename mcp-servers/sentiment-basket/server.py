@@ -327,7 +327,7 @@ async def list_tools():
 
 # Global timeout for all tool operations (seconds)
 # Increased for completeness-first mode
-TOOL_TIMEOUT = 60.0
+TOOL_TIMEOUT = 90.0  # Match mcp_client timeout
 
 
 async def _execute_tool_with_timeout(name: str, arguments: dict) -> dict:

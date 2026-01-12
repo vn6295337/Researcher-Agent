@@ -1,42 +1,32 @@
 """
-E2E test for all 6 MCP servers.
-Fetches data, validates responses, and generates a markdown report.
+E2E test for all 6 MCP servers using subprocess+MCP protocol (same as production).
 
 Usage: python tests/test_mcp_e2e.py [TICKER] [COMPANY_NAME]
 Default: KO "The Coca-Cola Company"
 """
 import asyncio
 import sys
-import os
-import importlib.util
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 # Load environment variables from project .env
 from dotenv import load_dotenv
 load_dotenv(PROJECT_ROOT / ".env")
 
-
-def load_module_from_path(module_name: str, file_path: Path):
-    """Dynamically load a module from a specific file path."""
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
-
-    # Add the module's directory to sys.path temporarily for relative imports
-    module_dir = str(file_path.parent)
-    if module_dir not in sys.path:
-        sys.path.insert(0, module_dir)
-
-    spec.loader.exec_module(module)
-    return module
+# Import MCP client (subprocess+MCP protocol)
+from mcp_client import call_mcp_server
 
 # Default test company
 DEFAULT_TICKER = "KO"
 DEFAULT_COMPANY = "The Coca-Cola Company"
+
+# MCP server timeout (seconds)
+MCP_TIMEOUT = 90.0
 
 
 class MCPTestResult:
@@ -52,25 +42,31 @@ class MCPTestResult:
 
 
 async def test_fundamentals(ticker: str) -> MCPTestResult:
-    """Test fundamentals-basket MCP."""
+    """Test fundamentals-basket MCP via subprocess+MCP protocol."""
     result = MCPTestResult("fundamentals")
     start = datetime.now()
 
     try:
-        module_path = PROJECT_ROOT / "mcp-servers" / "fundamentals-basket" / "server_legacy.py"
-        module = load_module_from_path("fundamentals_server", module_path)
-        get_all_sources_fundamentals = module.get_all_sources_fundamentals
-
-        data = await get_all_sources_fundamentals(ticker)
+        data = await call_mcp_server(
+            "fundamentals-basket",
+            "get_all_sources_fundamentals",
+            {"ticker": ticker},
+            timeout=MCP_TIMEOUT
+        )
         result.data = data
 
         if not isinstance(data, dict):
             result.errors.append("Response is not a dict")
             return result
 
-        # Schema validation - fundamentals uses sec_edgar/yahoo_finance keys
-        sec_data = data.get("sec_edgar", {})
-        yahoo_data = data.get("yahoo_finance", {})
+        if "error" in data:
+            result.errors.append(f"MCP error: {data['error']}")
+            return result
+
+        # Schema validation - fundamentals uses sources.sec_edgar/sources.yahoo_finance
+        sources = data.get("sources", {})
+        sec_data = sources.get("sec_edgar", {})
+        yahoo_data = sources.get("yahoo_finance", {})
 
         if not sec_data and not yahoo_data:
             result.errors.append("No SEC or Yahoo data")
@@ -94,20 +90,25 @@ async def test_fundamentals(ticker: str) -> MCPTestResult:
 
 
 async def test_valuation(ticker: str) -> MCPTestResult:
-    """Test valuation-basket MCP."""
+    """Test valuation-basket MCP via subprocess+MCP protocol."""
     result = MCPTestResult("valuation")
     start = datetime.now()
 
     try:
-        module_path = PROJECT_ROOT / "mcp-servers" / "valuation-basket" / "server.py"
-        module = load_module_from_path("valuation_server", module_path)
-        get_all_sources_valuation = module.get_all_sources_valuation
-
-        data = await get_all_sources_valuation(ticker)
+        data = await call_mcp_server(
+            "valuation-basket",
+            "get_all_sources_valuation",
+            {"ticker": ticker},
+            timeout=MCP_TIMEOUT
+        )
         result.data = data
 
         if not isinstance(data, dict):
             result.errors.append("Response is not a dict")
+            return result
+
+        if "error" in data:
+            result.errors.append(f"MCP error: {data['error']}")
             return result
 
         # Schema validation
@@ -132,20 +133,25 @@ async def test_valuation(ticker: str) -> MCPTestResult:
 
 
 async def test_volatility(ticker: str) -> MCPTestResult:
-    """Test volatility-basket MCP."""
+    """Test volatility-basket MCP via subprocess+MCP protocol."""
     result = MCPTestResult("volatility")
     start = datetime.now()
 
     try:
-        module_path = PROJECT_ROOT / "mcp-servers" / "volatility-basket" / "server.py"
-        module = load_module_from_path("volatility_server", module_path)
-        get_all_sources_volatility = module.get_all_sources_volatility
-
-        data = await get_all_sources_volatility(ticker)
+        data = await call_mcp_server(
+            "volatility-basket",
+            "get_all_sources_volatility",
+            {"ticker": ticker},
+            timeout=MCP_TIMEOUT
+        )
         result.data = data
 
         if not isinstance(data, dict):
             result.errors.append("Response is not a dict")
+            return result
+
+        if "error" in data:
+            result.errors.append(f"MCP error: {data['error']}")
             return result
 
         # Schema validation
@@ -166,20 +172,25 @@ async def test_volatility(ticker: str) -> MCPTestResult:
 
 
 async def test_macro() -> MCPTestResult:
-    """Test macro-basket MCP."""
+    """Test macro-basket MCP via subprocess+MCP protocol."""
     result = MCPTestResult("macro")
     start = datetime.now()
 
     try:
-        module_path = PROJECT_ROOT / "mcp-servers" / "macro-basket" / "server.py"
-        module = load_module_from_path("macro_server", module_path)
-        get_all_sources_macro = module.get_all_sources_macro
-
-        data = await get_all_sources_macro()
+        data = await call_mcp_server(
+            "macro-basket",
+            "get_all_sources_macro",
+            {},
+            timeout=MCP_TIMEOUT
+        )
         result.data = data
 
         if not isinstance(data, dict):
             result.errors.append("Response is not a dict")
+            return result
+
+        if "error" in data:
+            result.errors.append(f"MCP error: {data['error']}")
             return result
 
         # Schema validation
@@ -200,20 +211,25 @@ async def test_macro() -> MCPTestResult:
 
 
 async def test_news(ticker: str, company_name: str) -> MCPTestResult:
-    """Test news-basket MCP."""
+    """Test news-basket MCP via subprocess+MCP protocol."""
     result = MCPTestResult("news")
     start = datetime.now()
 
     try:
-        module_path = PROJECT_ROOT / "mcp-servers" / "news-basket" / "server.py"
-        module = load_module_from_path("news_server", module_path)
-        get_all_sources_news = module.get_all_sources_news
-
-        data = await get_all_sources_news(ticker, company_name)
+        data = await call_mcp_server(
+            "news-basket",
+            "get_all_sources_news",
+            {"ticker": ticker, "company_name": company_name},
+            timeout=MCP_TIMEOUT
+        )
         result.data = data
 
         if not isinstance(data, dict):
             result.errors.append("Response is not a dict")
+            return result
+
+        if "error" in data:
+            result.errors.append(f"MCP error: {data['error']}")
             return result
 
         # Schema validation
@@ -244,20 +260,25 @@ async def test_news(ticker: str, company_name: str) -> MCPTestResult:
 
 
 async def test_sentiment(ticker: str, company_name: str) -> MCPTestResult:
-    """Test sentiment-basket MCP."""
+    """Test sentiment-basket MCP via subprocess+MCP protocol."""
     result = MCPTestResult("sentiment")
     start = datetime.now()
 
     try:
-        module_path = PROJECT_ROOT / "mcp-servers" / "sentiment-basket" / "server.py"
-        module = load_module_from_path("sentiment_server", module_path)
-        get_all_sources_sentiment = module.get_all_sources_sentiment
-
-        data = await get_all_sources_sentiment(ticker, company_name)
+        data = await call_mcp_server(
+            "sentiment-basket",
+            "get_sentiment_basket",
+            {"ticker": ticker, "company_name": company_name},
+            timeout=MCP_TIMEOUT
+        )
         result.data = data
 
         if not isinstance(data, dict):
             result.errors.append("Response is not a dict")
+            return result
+
+        if "error" in data:
+            result.errors.append(f"MCP error: {data['error']}")
             return result
 
         # Schema validation
@@ -342,11 +363,13 @@ def extract_quantitative_rows(results: List[MCPTestResult], ticker: str) -> List
     """Extract quantitative data rows from results."""
     rows = []
 
-    # Fundamentals - uses sec_edgar/yahoo_finance structure with nested 'data' key
+    # Fundamentals - uses sources.sec_edgar/sources.yahoo_finance with nested 'data' key
     fund_result = next((r for r in results if r.name == "fundamentals"), None)
     if fund_result and fund_result.data:
-        # SEC EDGAR data - metrics are inside .data
-        sec_wrapper = fund_result.data.get("sec_edgar", {})
+        sources = fund_result.data.get("sources", {})
+
+        # SEC EDGAR data - metrics are inside sources.sec_edgar.data
+        sec_wrapper = sources.get("sec_edgar", {})
         sec_data = sec_wrapper.get("data", {}) if isinstance(sec_wrapper, dict) else {}
         for metric_name, metric_val in sec_data.items():
             if isinstance(metric_val, dict):
@@ -360,8 +383,8 @@ def extract_quantitative_rows(results: List[MCPTestResult], ticker: str) -> List
                     "category": "Fundamentals",
                 })
 
-        # Yahoo Finance data - metrics are inside .data, as_of is at wrapper level
-        yahoo_wrapper = fund_result.data.get("yahoo_finance", {})
+        # Yahoo Finance data - metrics are inside sources.yahoo_finance.data
+        yahoo_wrapper = sources.get("yahoo_finance", {})
         yahoo_as_of = yahoo_wrapper.get("as_of", "-") if isinstance(yahoo_wrapper, dict) else "-"
         yahoo_data = yahoo_wrapper.get("data", {}) if isinstance(yahoo_wrapper, dict) else {}
         for metric_name, metric_val in yahoo_data.items():

@@ -976,7 +976,8 @@ async def list_tools():
 
 
 # Global timeout for all tool operations (seconds)
-TOOL_TIMEOUT = 45.0
+# Increased to 90s to handle slow BEA/BLS/FRED API responses on HuggingFace
+TOOL_TIMEOUT = 90.0
 
 
 async def _execute_tool_with_timeout(name: str, arguments: dict) -> dict:
