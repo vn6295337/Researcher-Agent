@@ -34,7 +34,7 @@ logger = logging.getLogger("research-service")
 app = FastAPI(
     title="Research Service",
     description="Financial research service for SWOT analysis - fetches data from 6 MCP servers using TRUE MCP protocol",
-    version="1.1.0"
+    version="1.1.1"
 )
 
 # CORS for cross-origin requests from main SWOT app
@@ -95,7 +95,7 @@ TASK_STORE: Dict[str, Task] = {}
 
 AGENT_CARD = {
     "name": "research-service",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Financial research service that collects data from 6 MCP servers using TRUE MCP protocol (subprocess + JSON-RPC) for SWOT analysis.",
     "url": A2A_SERVER_URL,
     "capabilities": {
@@ -437,7 +437,7 @@ async def health_check():
     return {
         "status": "healthy",
         "agent": "research-service",
-        "version": "1.1.0",
+        "version": "1.1.1",
         "protocol": "TRUE MCP (subprocess + JSON-RPC)",
         "tasks_in_memory": len(TASK_STORE),
         "capabilities": ["partial_metrics_streaming"]
@@ -449,7 +449,7 @@ async def root():
     """Root endpoint with API info."""
     return {
         "name": "Research Service",
-        "version": "1.1.0",
+        "version": "1.1.1",
         "protocol": "A2A (JSON-RPC 2.0) + TRUE MCP (subprocess)",
         "endpoints": {
             "POST /": "JSON-RPC endpoint (message/send, tasks/get, tasks/cancel)",
