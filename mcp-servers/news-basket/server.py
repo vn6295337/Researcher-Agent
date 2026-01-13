@@ -35,8 +35,8 @@ def normalize_date(date_str: str) -> str:
 from pathlib import Path
 from typing import Optional
 
-# Import company name normalization and domain filters from local config
-from config.company_name_filters import clean_company_name
+# Import company name normalization from shared configs, domain filters from local config
+from configs.company_name_filters import clean_company_name
 from config.domain_filters import NEWS_DOMAINS, NYT_NEWS_DESKS, NEWSAPI_DOMAINS
 
 # Load environment variables (later files override earlier ones)
@@ -440,15 +440,13 @@ async def get_all_sources_news(ticker: str, company_name: str = None) -> dict:
             "source": article.get("source"),
         })
 
+    # Return {source: {data: ...}} structure
     return {
-        "group": "content_analysis",
-        "ticker": ticker.upper(),
-        "query": base_query,
-        "items": items,
-        "item_count": len(items),
-        "sources_used": sources_used,
-        "source": "news-basket",
-        "as_of": datetime.now().strftime("%Y-%m-%d")
+        "news_aggregator": {
+            "data": {
+                "items": items,
+            }
+        }
     }
 
 
