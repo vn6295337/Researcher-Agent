@@ -1,40 +1,28 @@
-NYT Article Search Data Schema
-==============================
+## Endpoint
+`GET https://api.nytimes.com/svc/search/v2/articlesearch.json`
 
-Endpoint: https://api.nytimes.com/svc/search/v2/articlesearch.json
-Method: GET
+## Request Parameters
+```
+api-key
+q
+sort          (newest, oldest, relevance)
+page
+begin_date    (YYYYMMDD)
+end_date      (YYYYMMDD)
+fq            (filter query, e.g., news_desk filter)
+```
 
-
-Request Parameters
-
-| field      | type   | description                     |
-|------------|--------|---------------------------------|
-| api-key    | string | API key                         |
-| q          | string | Search query                    |
-| sort       | string | "newest", "oldest", "relevance" |
-| begin_date | string | YYYYMMDD format                 |
-| end_date   | string | YYYYMMDD format                 |
-| page       | int    | Pagination (0-indexed)          |
-
-
-Response (response.docs[])
-
-| field          | type   | description      |
-|----------------|--------|------------------|
-| headline.main  | string | Article headline |
-| web_url        | string | Article URL      |
-| snippet        | string | Article snippet  |
-| lead_paragraph | string | First paragraph  |
-| pub_date       | string | ISO date         |
-| section_name   | string | NYT section      |
-
-
-Example Result
-
-| field          | value                                  |
-|----------------|----------------------------------------|
-| headline.main  | "Apple Stock Surges on Earnings"       |
-| web_url        | "https://nytimes.com/2025/01/apple..." |
-| snippet        | "Apple shares climbed on strong..."    |
-| pub_date       | "2025-01-09T15:30:00Z"                 |
-| section_name   | "Business"                             |
+## Response Structure
+```
+response
+  meta
+    hits
+  docs[]
+    headline
+      main
+    web_url
+    snippet
+    lead_paragraph
+    pub_date
+    section_name
+```

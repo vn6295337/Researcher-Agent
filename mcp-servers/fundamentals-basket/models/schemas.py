@@ -181,16 +181,12 @@ class ParsedFinancials:
     royalty_expense: Optional[TemporalMetric] = None
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        result = {
-            "ticker": self.ticker,
-            "source": self.source,
-            "as_of": self.as_of,
-            "sector": self.sector,
-        }
+        """Convert to dictionary for JSON serialization.
 
-        if self.sic_code:
-            result["sic_code"] = self.sic_code
+        Only emits metrics (no redundant metadata like ticker, source, sector).
+        Metadata is provided via company_info in the orchestrator.
+        """
+        result = {}
 
         # Add temporal metrics - universal fields
         for field_name in [
@@ -265,12 +261,8 @@ class DebtMetrics:
     as_of: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d"))
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        result = {
-            "ticker": self.ticker,
-            "source": self.source,
-            "as_of": self.as_of,
-        }
+        """Convert to dictionary for JSON serialization. Only emits metrics."""
+        result = {}
 
         for field_name in [
             "long_term_debt", "short_term_debt", "total_debt",
@@ -295,12 +287,8 @@ class CashFlowMetrics:
     as_of: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d"))
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        result = {
-            "ticker": self.ticker,
-            "source": self.source,
-            "as_of": self.as_of,
-        }
+        """Convert to dictionary for JSON serialization. Only emits metrics."""
+        result = {}
 
         for field_name in [
             "operating_cash_flow", "capital_expenditure",

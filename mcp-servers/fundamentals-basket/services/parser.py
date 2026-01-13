@@ -354,7 +354,9 @@ class ParserService:
             ParsedFinancials with all metrics (universal + industry-specific)
         """
         # Extract core metrics (universal)
-        revenue = self.get_latest_value(facts, REVENUE_CONCEPTS)
+        # Use get_most_recent_across_concepts for revenue to ensure freshest data
+        # (some companies have ASC 606 concept stale while legacy "Revenues" is current)
+        revenue = self.get_most_recent_across_concepts(facts, REVENUE_CONCEPTS)
         net_income = self.get_latest_value(facts, NET_INCOME_CONCEPTS)
         gross_profit = self.get_latest_value(facts, GROSS_PROFIT_CONCEPTS)
         operating_income = self.get_latest_value(facts, OPERATING_INCOME_CONCEPTS)

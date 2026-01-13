@@ -42,6 +42,46 @@ import httpx
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("macro-basket")
 
+
+def normalize_date_to_iso(date_str: str) -> str:
+    """
+    Normalize various date formats to YYYY-MM-DD.
+
+    Examples:
+    - "2025Q3" → "2025-09-30" (end of Q3)
+    - "2025-November" → "2025-11-30" (end of month)
+    - "2025-December" → "2025-12-31"
+    - "2025-01" → "2025-01-31"
+    """
+    if not date_str:
+        return None
+
+    # Already in YYYY-MM-DD format
+    if len(date_str) == 10 and date_str[4] == '-' and date_str[7] == '-':
+        return date_str
+
+    # Quarter format: 2025Q3 → 2025-09-30
+    if 'Q' in date_str:
+        year = date_str[:4]
+        quarter = date_str[-1]
+        quarter_end = {'1': '03-31', '2': '06-30', '3': '09-30', '4': '12-31'}
+        return f"{year}-{quarter_end.get(quarter, '12-31')}"
+
+    # Month name format: 2025-November → 2025-11-30
+    month_map = {
+        'January': ('01', '31'), 'February': ('02', '28'), 'March': ('03', '31'),
+        'April': ('04', '30'), 'May': ('05', '31'), 'June': ('06', '30'),
+        'July': ('07', '31'), 'August': ('08', '31'), 'September': ('09', '30'),
+        'October': ('10', '31'), 'November': ('11', '30'), 'December': ('12', '31')
+    }
+    for month_name, (month_num, day) in month_map.items():
+        if month_name in date_str:
+            year = date_str.split('-')[0]
+            return f"{year}-{month_num}-{day}"
+
+    return date_str  # Return as-is if no pattern matches
+
+
 # Initialize MCP server
 server = Server("macro-basket")
 
@@ -805,49 +845,73 @@ async def get_all_sources_macro() -> dict:
         fred_gdp_task, fred_rates_task, fred_cpi_task, fred_unemp_task
     )
 
-    # Use primary source, fallback to secondary if primary failed
-    gdp = bea_gdp if "error" not in bea_gdp else fred_gdp
-    cpi = bls_cpi if "error" not in bls_cpi else fred_cpi
-    unemp = bls_unemp if "error" not in bls_unemp else fred_unemp
-    rates = fred_rates  # FRED is primary for interest rates
+    # Build flat {source: metrics} structure (no "data" wrapper)
+    sources = {}
+    bea_failed = "error" in bea_gdp
+    bls_cpi_failed = "error" in bls_cpi
+    bls_unemp_failed = "error" in bls_unemp
 
-    # Build normalized raw_metrics schema with temporal data
-    return {
-        "group": "raw_metrics",
-        "ticker": "MACRO",
-        "metrics": {
+    # BEA: GDP (if succeeded)
+    if not bea_failed:
+        sources["bea"] = {
             "gdp_growth": {
-                "value": gdp.get("value") if gdp else None,
+                "value": bea_gdp.get("value"),
                 "data_type": "Quarterly",
-                "as_of": gdp.get("date") if gdp else None,  # e.g., "2025Q3"
-                "source": gdp.get("source") if gdp else None,
-                "fallback": gdp.get("fallback", False) if gdp else True
+                "as_of": normalize_date_to_iso(bea_gdp.get("date")),
             },
-            "interest_rate": {
-                "value": rates.get("value") if rates else None,
-                "data_type": "Monthly",
-                "as_of": rates.get("date") if rates else None,
-                "source": rates.get("source") if rates else None,
-                "fallback": rates.get("fallback", False) if rates else True
-            },
-            "cpi_inflation": {
-                "value": cpi.get("value") if cpi else None,
-                "data_type": "Monthly",
-                "as_of": cpi.get("date") if cpi else None,
-                "source": cpi.get("source") if cpi else None,
-                "fallback": cpi.get("fallback", False) if cpi else True
-            },
-            "unemployment": {
-                "value": unemp.get("value") if unemp else None,
-                "data_type": "Monthly",
-                "as_of": unemp.get("date") if unemp else None,
-                "source": unemp.get("source") if unemp else None,
-                "fallback": unemp.get("fallback", False) if unemp else True
-            }
-        },
-        "source": "macro-basket",
-        "as_of": datetime.now().strftime("%Y-%m-%d")
-    }
+        }
+
+    # BLS: CPI and Unemployment (if succeeded)
+    bls_data = {}
+    if not bls_cpi_failed:
+        bls_data["cpi_inflation"] = {
+            "value": bls_cpi.get("value"),
+            "data_type": "Monthly",
+            "as_of": normalize_date_to_iso(bls_cpi.get("date")),
+        }
+    if not bls_unemp_failed:
+        bls_data["unemployment"] = {
+            "value": bls_unemp.get("value"),
+            "data_type": "Monthly",
+            "as_of": normalize_date_to_iso(bls_unemp.get("date")),
+        }
+    if bls_data:
+        sources["bls"] = bls_data
+
+    # FRED: interest_rate (always) + fallbacks for failed BEA/BLS
+    fred_data = {}
+    # Interest rate - FRED is primary
+    if "error" not in fred_rates:
+        fred_data["interest_rate"] = {
+            "value": fred_rates.get("value"),
+            "data_type": "Monthly",
+            "as_of": normalize_date_to_iso(fred_rates.get("date")),
+        }
+    # Fallback: GDP from FRED if BEA failed
+    if bea_failed and "error" not in fred_gdp:
+        fred_data["gdp_growth"] = {
+            "value": fred_gdp.get("value"),
+            "data_type": "Quarterly",
+            "as_of": normalize_date_to_iso(fred_gdp.get("date")),
+        }
+    # Fallback: CPI from FRED if BLS failed
+    if bls_cpi_failed and "error" not in fred_cpi:
+        fred_data["cpi_inflation"] = {
+            "value": fred_cpi.get("value"),
+            "data_type": "Monthly",
+            "as_of": normalize_date_to_iso(fred_cpi.get("date")),
+        }
+    # Fallback: Unemployment from FRED if BLS failed
+    if bls_unemp_failed and "error" not in fred_unemp:
+        fred_data["unemployment"] = {
+            "value": fred_unemp.get("value"),
+            "data_type": "Monthly",
+            "as_of": normalize_date_to_iso(fred_unemp.get("date")),
+        }
+    if fred_data:
+        sources["fred"] = fred_data
+
+    return sources
 
 
 async def get_full_macro_basket() -> dict:

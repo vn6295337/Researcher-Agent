@@ -401,53 +401,46 @@ async def get_all_sources_news(ticker: str, company_name: str = None) -> dict:
         tavily_task, nyt_task, newsapi_task
     )
 
-    # Combine results
-    all_results = []
-    sources_used = []
+    # Build source-keyed structure
+    result = {}
 
-    # Add Tavily results (inject source name into each article)
+    # Add Tavily results
     if "results" in tavily_result and tavily_result["results"]:
-        for article in tavily_result["results"]:
-            article["source"] = article.get("source") or "Tavily"
-        all_results.extend(tavily_result["results"])
-        sources_used.append("Tavily")
-
-    # Add NYT results (inject source name into each article)
-    if "results" in nyt_result and nyt_result["results"]:
-        for article in nyt_result["results"]:
-            article["source"] = article.get("source") or "NYT"
-        all_results.extend(nyt_result["results"])
-        sources_used.append("NYT")
-
-    # Add NewsAPI results (inject source name into each article)
-    if "results" in newsapi_result and newsapi_result["results"]:
-        for article in newsapi_result["results"]:
-            article["source"] = article.get("source") or "NewsAPI"
-        all_results.extend(newsapi_result["results"])
-        sources_used.append("NewsAPI")
-
-    # Sort by date (most recent first) - deduplication applied downstream
-    all_results.sort(key=lambda x: x.get("published_date", "") or "", reverse=True)
-
-    # Build normalized content_analysis schema
-    items = []
-    for article in all_results:
-        items.append({
-            "title": article.get("title"),
-            "content": article.get("content") or article.get("snippet"),
-            "url": article.get("url"),
-            "datetime": normalize_date(article.get("published_date")),
-            "source": article.get("source"),
-        })
-
-    # Return {source: {data: ...}} structure
-    return {
-        "news_aggregator": {
-            "data": {
-                "items": items,
+        result["tavily"] = [
+            {
+                "title": a.get("title"),
+                "url": a.get("url"),
+                "content": a.get("content"),
+                "published_date": normalize_date(a.get("published_date")),
             }
-        }
-    }
+            for a in tavily_result["results"]
+        ]
+
+    # Add NYT results
+    if "results" in nyt_result and nyt_result["results"]:
+        result["nyt"] = [
+            {
+                "title": a.get("title"),
+                "url": a.get("url"),
+                "content": a.get("content") or a.get("snippet"),
+                "published_date": normalize_date(a.get("published_date")),
+            }
+            for a in nyt_result["results"]
+        ]
+
+    # Add NewsAPI results
+    if "results" in newsapi_result and newsapi_result["results"]:
+        result["newsapi"] = [
+            {
+                "title": a.get("title"),
+                "url": a.get("url"),
+                "content": a.get("content"),
+                "published_date": normalize_date(a.get("published_date")),
+            }
+            for a in newsapi_result["results"]
+        ]
+
+    return result
 
 
 async def search_going_concern_news(ticker: str, company_name: str = None) -> dict:

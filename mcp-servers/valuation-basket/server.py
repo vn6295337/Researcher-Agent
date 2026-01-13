@@ -643,60 +643,59 @@ async def get_full_valuation_basket(ticker: str) -> dict:
 
 async def get_all_sources_valuation(ticker: str) -> dict:
     """
-    Fetch valuation metrics from Yahoo Finance (primary) with Alpha Vantage fallback.
-    Returns NORMALIZED schema with 11 universal metrics.
+    Fetch valuation metrics from Yahoo Finance (primary) + Alpha Vantage (supplementary).
+
+    - Yahoo succeeds: yahoo_finance (core) + alpha_vantage (supplementary: ev_ebitda)
+    - Yahoo fails: alpha_vantage (core + supplementary)
     """
-    yahoo_result = await fetch_yahoo_quote(ticker)
+    # Fetch both sources in parallel
+    yahoo_task = fetch_yahoo_quote(ticker)
+    alpha_task = fetch_alpha_vantage_quote(ticker)
+    yahoo_result, alpha_result = await asyncio.gather(yahoo_task, alpha_task)
 
-    # Build normalized schema
     sources = {}
+    yahoo_failed = "error" in yahoo_result
 
-    # Yahoo Finance as primary source (11 universal metrics, excludes ev_ebitda)
-    if "error" not in yahoo_result:
+    if not yahoo_failed:
+        # Yahoo core metrics with temporal data (flat, no "data" wrapper)
+        yahoo_as_of = yahoo_result.get("regular_market_time")
         sources["yahoo_finance"] = {
-            "source": "Yahoo Finance",
-            "regular_market_time": yahoo_result.get("regular_market_time"),
-            "data": {
-                "current_price": safe_get(yahoo_result, "current_price"),
-                "market_cap": safe_get(yahoo_result, "market_cap"),
-                "enterprise_value": safe_get(yahoo_result, "enterprise_value"),
-                "trailing_pe": safe_get(yahoo_result, "trailing_pe"),
-                "forward_pe": safe_get(yahoo_result, "forward_pe"),
-                "ps_ratio": safe_get(yahoo_result, "ps_ratio"),
-                "pb_ratio": safe_get(yahoo_result, "pb_ratio"),
-                "trailing_peg": safe_get(yahoo_result, "trailing_peg"),
-                "forward_peg": safe_get(yahoo_result, "forward_peg"),
-                "earnings_growth": safe_get(yahoo_result, "earnings_growth"),
-                "revenue_growth": safe_get(yahoo_result, "revenue_growth"),
-            }
+            "current_price": {"value": safe_get(yahoo_result, "current_price"), "as_of": yahoo_as_of},
+            "market_cap": {"value": safe_get(yahoo_result, "market_cap"), "as_of": yahoo_as_of},
+            "enterprise_value": {"value": safe_get(yahoo_result, "enterprise_value"), "as_of": yahoo_as_of},
+            "trailing_pe": {"value": safe_get(yahoo_result, "trailing_pe"), "as_of": yahoo_as_of},
+            "forward_pe": {"value": safe_get(yahoo_result, "forward_pe"), "as_of": yahoo_as_of},
+            "ps_ratio": {"value": safe_get(yahoo_result, "ps_ratio"), "as_of": yahoo_as_of},
+            "pb_ratio": {"value": safe_get(yahoo_result, "pb_ratio"), "as_of": yahoo_as_of},
+            "trailing_peg": {"value": safe_get(yahoo_result, "trailing_peg"), "as_of": yahoo_as_of},
+            "forward_peg": {"value": safe_get(yahoo_result, "forward_peg"), "as_of": yahoo_as_of},
+            "earnings_growth": {"value": safe_get(yahoo_result, "earnings_growth"), "as_of": yahoo_as_of},
+            "revenue_growth": {"value": safe_get(yahoo_result, "revenue_growth"), "as_of": yahoo_as_of},
         }
-    else:
-        # Fallback to Alpha Vantage if Yahoo Finance fails
-        alpha_result = await fetch_alpha_vantage_quote(ticker)
+        # Alpha supplementary metrics (ev_ebitda not in Yahoo)
         if alpha_result and "error" not in alpha_result:
+            alpha_as_of = alpha_result.get("latest_quarter")
             sources["alpha_vantage"] = {
-                "source": "Alpha Vantage",
-                "latest_quarter": alpha_result.get("latest_quarter"),
-                "data": {
-                    "current_price": safe_get(alpha_result, "current_price"),
-                    "market_cap": safe_get(alpha_result, "market_cap"),
-                    "trailing_pe": safe_get(alpha_result, "trailing_pe"),
-                    "forward_pe": safe_get(alpha_result, "forward_pe"),
-                    "ps_ratio": safe_get(alpha_result, "ps_ratio"),
-                    "pb_ratio": safe_get(alpha_result, "pb_ratio"),
-                    "trailing_peg": safe_get(alpha_result, "trailing_peg"),
-                    "earnings_growth": safe_get(alpha_result, "earnings_growth"),
-                    "revenue_growth": safe_get(alpha_result, "revenue_growth"),
-                }
+                "ev_ebitda": {"value": safe_get(alpha_result, "ev_ebitda"), "as_of": alpha_as_of},
+            }
+    else:
+        # Fallback: Alpha provides core + supplementary
+        if alpha_result and "error" not in alpha_result:
+            alpha_as_of = alpha_result.get("latest_quarter")
+            sources["alpha_vantage"] = {
+                "current_price": {"value": safe_get(alpha_result, "current_price"), "as_of": alpha_as_of},
+                "market_cap": {"value": safe_get(alpha_result, "market_cap"), "as_of": alpha_as_of},
+                "trailing_pe": {"value": safe_get(alpha_result, "trailing_pe"), "as_of": alpha_as_of},
+                "forward_pe": {"value": safe_get(alpha_result, "forward_pe"), "as_of": alpha_as_of},
+                "ps_ratio": {"value": safe_get(alpha_result, "ps_ratio"), "as_of": alpha_as_of},
+                "pb_ratio": {"value": safe_get(alpha_result, "pb_ratio"), "as_of": alpha_as_of},
+                "trailing_peg": {"value": safe_get(alpha_result, "trailing_peg"), "as_of": alpha_as_of},
+                "earnings_growth": {"value": safe_get(alpha_result, "earnings_growth"), "as_of": alpha_as_of},
+                "revenue_growth": {"value": safe_get(alpha_result, "revenue_growth"), "as_of": alpha_as_of},
+                "ev_ebitda": {"value": safe_get(alpha_result, "ev_ebitda"), "as_of": alpha_as_of},
             }
 
-    return {
-        "group": "source_comparison",
-        "ticker": ticker.upper(),
-        "sources": sources,
-        "source": "valuation-basket",
-        "as_of": datetime.now().strftime("%Y-%m-%d")
-    }
+    return sources
 
 
 # ============================================================

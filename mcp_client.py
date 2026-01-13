@@ -427,134 +427,23 @@ async def call_sentiment_mcp(ticker: str, company_name: str = "") -> dict:
 # =============================================================================
 
 def _normalize_volatility(raw: dict) -> dict:
-    """
-    Normalize volatility schema.
-    Input:  {"metrics": {"vix": {...}, "beta": {...}, ...}}
-    Output: {"yahoo_finance": {"data": {...}}, "market_volatility_context": {...}}
-    """
-    if not raw or "error" in raw:
-        return raw
-
-    metrics = raw.get("metrics", {})
-
-    # Extract VIX/VXN for market context
-    vix = metrics.get("vix", {})
-    vxn = metrics.get("vxn", {})
-
-    # Extract stock-specific metrics for yahoo_finance
-    beta = metrics.get("beta", {})
-    hist_vol = metrics.get("historical_volatility", {})
-    impl_vol = metrics.get("implied_volatility", {})
-
-    return {
-        "yahoo_finance": {
-            "source": "Yahoo Finance",
-            "data": {
-                "beta": beta,
-                "historical_volatility": hist_vol,
-                "implied_volatility": impl_vol,
-            }
-        },
-        "market_volatility_context": {
-            "vix": {"value": vix.get("value"), "date": vix.get("as_of")},
-            "vxn": {"value": vxn.get("value"), "date": vxn.get("as_of")},
-        },
-        "source": raw.get("source"),
-        "as_of": raw.get("as_of"),
-    }
+    """Pass-through: MCPs now emit {source: {data: ...}} directly."""
+    return raw
 
 
 def _normalize_macro(raw: dict) -> dict:
-    """
-    Normalize macro schema.
-    Input:  {"metrics": {"gdp_growth": {...}, "interest_rate": {...}, ...}}
-    Output: {"bea_bls": {"data": {...}}, "fred": {"data": {...}}}
-    """
-    if not raw or "error" in raw:
-        return raw
-
-    metrics = raw.get("metrics", {})
-
-    gdp = metrics.get("gdp_growth", {})
-    cpi = metrics.get("cpi_inflation", {})
-    unemp = metrics.get("unemployment", {})
-    interest = metrics.get("interest_rate", {})
-
-    # BEA/BLS: GDP, CPI, unemployment (primary sources)
-    # FRED: interest_rate (and fallback for others)
-    # Note: In get_all_sources_macro, "as_of" field contains the actual data date (e.g., "2025Q3")
-    return {
-        "bea_bls": {
-            "source": "BEA/BLS",
-            "data": {
-                "gdp_growth": {"value": gdp.get("value"), "date": gdp.get("as_of")},
-                "cpi_inflation": {"value": cpi.get("value"), "date": cpi.get("as_of")},
-                "unemployment": {"value": unemp.get("value"), "date": unemp.get("as_of")},
-            }
-        },
-        "fred": {
-            "source": "FRED",
-            "data": {
-                "interest_rate": {"value": interest.get("value"), "date": interest.get("as_of")},
-                "gdp_growth": {"value": gdp.get("value"), "date": gdp.get("as_of")} if gdp.get("fallback") else None,
-                "cpi_inflation": {"value": cpi.get("value"), "date": cpi.get("as_of")} if cpi.get("fallback") else None,
-                "unemployment": {"value": unemp.get("value"), "date": unemp.get("as_of")} if unemp.get("fallback") else None,
-            }
-        },
-        "source": raw.get("source"),
-        "as_of": raw.get("as_of"),
-    }
+    """Pass-through: MCPs now emit {source: {data: ...}} directly."""
+    return raw
 
 
 def _normalize_valuation(raw: dict) -> dict:
-    """
-    Normalize valuation schema.
-    Input:  {"sources": {"yahoo_finance": {...}, "alpha_vantage": {...}}}
-    Output: {"yahoo_finance": {"data": {...}}, "alpha_vantage": {"data": {...}}}
-    """
-    if not raw or "error" in raw:
-        return raw
-
-    sources = raw.get("sources", {})
-
-    result = {
-        "source": raw.get("source"),
-        "as_of": raw.get("as_of"),
-    }
-
-    # Flatten sources to top level
-    if "yahoo_finance" in sources:
-        result["yahoo_finance"] = sources["yahoo_finance"]
-    if "alpha_vantage" in sources:
-        result["alpha_vantage"] = sources["alpha_vantage"]
-
-    return result
+    """Pass-through: MCPs now emit {source: {data: ...}} directly."""
+    return raw
 
 
 def _normalize_fundamentals(raw: dict) -> dict:
-    """
-    Normalize fundamentals schema.
-    Input:  {"sources": {"sec_edgar": {...}, "yahoo_finance": {...}}}
-    Output: {"sec_edgar": {"data": {...}}, "yahoo_finance": {"data": {...}}}
-    """
-    if not raw or "error" in raw:
-        return raw
-
-    sources = raw.get("sources", {})
-
-    result = {
-        "source": raw.get("source"),
-        "as_of": raw.get("as_of"),
-        "ticker": raw.get("ticker"),
-    }
-
-    # Flatten sources to top level
-    if "sec_edgar" in sources:
-        result["sec_edgar"] = sources["sec_edgar"]
-    if "yahoo_finance" in sources:
-        result["yahoo_finance"] = sources["yahoo_finance"]
-
-    return result
+    """Pass-through: MCPs now emit {source: {data: ...}} directly."""
+    return raw
 
 
 def _get_nested_value(data: dict, *keys):

@@ -898,50 +898,44 @@ async def get_all_sources_volatility(ticker: str) -> dict:
     hv = yahoo_hv if "error" not in yahoo_hv else (av_hv or yahoo_hv)
     iv = yahoo_iv
 
-    # Build normalized raw_metrics schema with temporal data
-    return {
-        "group": "raw_metrics",
-        "ticker": ticker.upper(),
-        "metrics": {
-            "vix": {
-                "value": vix.get("value"),
-                "data_type": "Daily",
-                "as_of": vix.get("as_of"),  # FRED observation date
-                "source": vix.get("source"),
-                "fallback": vix.get("fallback", False)
-            },
-            "vxn": {
-                "value": vxn.get("value"),
-                "data_type": "Daily",
-                "as_of": vxn.get("as_of"),  # FRED observation date
-                "source": vxn.get("source"),
-                "fallback": vxn.get("fallback", False)
-            },
-            "beta": {
-                "value": beta.get("value") if beta else None,
-                "data_type": "1Y",  # 1 year lookback
-                "as_of": beta.get("as_of") if beta else None,
-                "source": beta.get("source") if beta else None,
-                "fallback": beta.get("fallback", False) if beta else True
-            },
-            "historical_volatility": {
-                "value": hv.get("value") if hv else None,
-                "data_type": "30D",  # 30 day lookback
-                "as_of": hv.get("as_of") if hv else None,
-                "source": hv.get("source") if hv else None,
-                "fallback": hv.get("fallback", False) if hv else True
-            },
-            "implied_volatility": {
-                "value": iv.get("value") if iv else None,
-                "data_type": "Forward",  # Forward-looking from options
-                "as_of": iv.get("as_of") if iv else None,
-                "source": iv.get("source") if iv else None,
-                "fallback": iv.get("fallback", False) if iv else True
-            }
+    # Build flat {source: metrics} structure (no "data" wrapper)
+    sources = {}
+
+    # FRED: VIX and VXN (market volatility context)
+    sources["fred"] = {
+        "vix": {
+            "value": vix.get("value"),
+            "data_type": "Daily",
+            "as_of": vix.get("as_of"),
         },
-        "source": "volatility-basket",
-        "as_of": datetime.now().strftime("%Y-%m-%d")
+        "vxn": {
+            "value": vxn.get("value"),
+            "data_type": "Daily",
+            "as_of": vxn.get("as_of"),
+        },
     }
+
+    # Yahoo Finance: beta, historical_volatility, implied_volatility
+    sources["yahoo_finance"] = {
+        "beta": {
+            "value": beta.get("value") if beta else None,
+            "data_type": "1Y",
+            "as_of": beta.get("as_of") if beta else None,
+        },
+        "historical_volatility": {
+            "value": hv.get("value") if hv else None,
+            "data_type": "30D",
+            "as_of": hv.get("as_of") if hv else None,
+        },
+        "implied_volatility": {
+            "value": iv.get("value") if iv else None,
+            "data_type": "Forward",
+            "as_of": iv.get("as_of") if iv else None,
+            "is_estimated": iv.get("estimated", False) if iv else True,
+        },
+    }
+
+    return sources
 
 
 async def get_full_volatility_basket(ticker: str) -> dict:

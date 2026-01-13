@@ -220,48 +220,34 @@ async def get_all_sources_sentiment(ticker: str, company_name: str = "") -> dict
 
     finnhub, reddit = await asyncio.gather(finnhub_task, reddit_task)
 
-    # Build normalized content_analysis schema
-    items = []
-    sources_used = []
+    # Build source-keyed structure
+    result = {}
 
     # Add Finnhub articles
     if "error" not in finnhub and finnhub.get("articles"):
-        sources_used.append("Finnhub")
-        for article in finnhub.get("articles", []):
-            items.append({
-                "title": article.get("headline"),
-                "content": article.get("summary"),
-                "url": article.get("url"),
-                "datetime": article.get("datetime"),
-                "source": "Finnhub",
-                "subreddit": None,  # Not applicable for Finnhub
-            })
+        result["finnhub"] = [
+            {
+                "title": a.get("headline"),
+                "url": a.get("url"),
+                "content": a.get("summary"),
+                "published_date": a.get("datetime"),
+            }
+            for a in finnhub.get("articles", [])
+        ]
 
     # Add Reddit posts
     if "error" not in reddit and reddit.get("posts"):
-        sources_used.append("Reddit")
-        for post in reddit.get("posts", []):
-            items.append({
-                "title": post.get("title"),
-                "content": post.get("selftext"),
-                "url": post.get("url"),
-                "datetime": post.get("created_utc"),
-                "source": "Reddit",
-                "subreddit": post.get("subreddit"),  # Separate subreddit field
-            })
+        result["reddit"] = [
+            {
+                "title": p.get("title"),
+                "url": p.get("url"),
+                "content": p.get("selftext"),
+                "published_date": p.get("created_utc"),
+            }
+            for p in reddit.get("posts", [])
+        ]
 
-    # Sort by datetime (most recent first)
-    items.sort(key=lambda x: x.get("datetime") or "", reverse=True)
-
-    return {
-        "group": "content_analysis",
-        "ticker": ticker.upper(),
-        "items": items,
-        "item_count": len(items),
-        "sources_used": sources_used,
-        "source": "sentiment-basket",
-        "as_of": datetime.now().strftime("%Y-%m-%d")
-    }
+    return result
 
 
 # ============================================================

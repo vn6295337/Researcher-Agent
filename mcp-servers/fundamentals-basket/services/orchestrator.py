@@ -381,42 +381,27 @@ class OrchestratorService:
 
         sec_result, yahoo_result = await asyncio.gather(sec_task, yahoo_task)
 
-        # Build normalized source_comparison schema
+        # Build flat source structure (no "data" wrapper)
         sources = {}
-        sec_failed = "error" in sec_result or not sec_result.get("data")
+        sec_failed = "error" in sec_result or not sec_result
 
         # Add SEC EDGAR data if available
         if not sec_failed:
-            sources["sec_edgar"] = {
-                "source": sec_result.get("source"),
-                "data": sec_result.get("data"),
-            }
+            sources["sec_edgar"] = sec_result
 
         # Add Yahoo Finance data
         if "error" not in yahoo_result:
             if sec_failed:
                 # FALLBACK: Yahoo provides core + supplementary when SEC fails
                 yahoo_data = await self._get_yahoo_fallback_data(ticker)
-                if yahoo_data.get("data"):
+                if yahoo_data and "error" not in yahoo_data:
                     sources["yahoo_finance"] = yahoo_data
-            elif yahoo_result.get("data"):
+            elif yahoo_result:
                 # SUPPLEMENTARY: Only additional metrics
-                sources["yahoo_finance"] = {
-                    "source": yahoo_result.get("source"),
-                    "data": yahoo_result.get("data"),
-                }
+                sources["yahoo_finance"] = yahoo_result
 
-        # Get company info for response (includes business_address)
-        company_info = await self.get_company_info(ticker)
-
-        return {
-            "group": "source_comparison",
-            "ticker": ticker,
-            "company": company_info,
-            "sources": sources,
-            "source": "fundamentals-basket",
-            "as_of": datetime.now().strftime("%Y-%m-%d"),
-        }
+        # Return flat {source: metrics} structure
+        return sources
 
     async def _get_sec_data_safe(self, ticker: str) -> Dict[str, Any]:
         """Get SEC data with error handling. Returns universal + industry-specific metrics."""
@@ -435,126 +420,30 @@ class OrchestratorService:
             sector = get_sector_from_sic(sic_code)
 
             financials = self.parser.parse_financials(facts, ticker, sector=sector, sic_code=sic_code)
+            debt = self.parser.parse_debt_metrics(facts, ticker)
+            cash_flow = self.parser.parse_cash_flow(facts, ticker)
 
-            # Helper to convert TemporalMetric to dict (include all temporal fields)
-            def to_metric_dict(tm):
-                if tm is None:
-                    return None
-                return {
-                    "value": tm.value,
-                    "end_date": tm.end_date,
-                    "data_type": tm.data_type,
-                    "fiscal_year": tm.fiscal_year,
-                    "form": tm.form,
-                }
+            # Use to_dict() to emit ALL metrics (universal + sector-specific)
+            # Only non-null values are included (sparse representation)
+            data = financials.to_dict()
 
-            # Universal metrics (works across all industries)
-            data = {
-                "revenue": to_metric_dict(financials.revenue),
-                "net_income": to_metric_dict(financials.net_income),
-                "net_margin_pct": to_metric_dict(financials.net_margin_pct),
-                "total_assets": to_metric_dict(financials.total_assets),
-                "total_liabilities": to_metric_dict(financials.total_liabilities),
-                "stockholders_equity": to_metric_dict(financials.stockholders_equity),
-            }
+            # Merge debt metrics (debt_to_equity, total_debt, etc.)
+            debt_dict = debt.to_dict()
+            for key in ["long_term_debt", "short_term_debt", "total_debt", "cash", "net_debt", "debt_to_equity"]:
+                if key in debt_dict:
+                    data[key] = debt_dict[key]
 
-            # Add industry-specific metrics if available
-            if sector == "INSURANCE":
-                data.update({
-                    "premiums_earned": to_metric_dict(financials.premiums_earned),
-                    "claims_incurred": to_metric_dict(financials.claims_incurred),
-                    "underwriting_income": to_metric_dict(financials.underwriting_income),
-                    "investment_income": to_metric_dict(financials.investment_income),
-                })
-            elif sector == "BANKS":
-                data.update({
-                    "net_interest_income": to_metric_dict(financials.net_interest_income),
-                    "provision_credit_losses": to_metric_dict(financials.provision_credit_losses),
-                    "noninterest_income": to_metric_dict(financials.noninterest_income),
-                    "deposits": to_metric_dict(financials.deposits),
-                })
-            elif sector == "REAL_ESTATE":
-                data.update({
-                    "rental_revenue": to_metric_dict(financials.rental_revenue),
-                    "noi": to_metric_dict(financials.noi),
-                    "ffo": to_metric_dict(financials.ffo),
-                })
-            elif sector == "OIL_GAS":
-                data.update({
-                    "oil_gas_revenue": to_metric_dict(financials.oil_gas_revenue),
-                    "production_expense": to_metric_dict(financials.production_expense),
-                    "depletion": to_metric_dict(financials.depletion),
-                })
-            elif sector == "UTILITIES":
-                data.update({
-                    "electric_revenue": to_metric_dict(financials.electric_revenue),
-                    "gas_revenue": to_metric_dict(financials.gas_revenue),
-                    "fuel_cost": to_metric_dict(financials.fuel_cost),
-                })
-            elif sector == "TECHNOLOGY":
-                data.update({
-                    "rd_expense": to_metric_dict(financials.rd_expense),
-                    "deferred_revenue": to_metric_dict(financials.deferred_revenue),
-                    "cost_of_revenue": to_metric_dict(financials.cost_of_revenue),
-                    "goodwill": to_metric_dict(financials.goodwill),
-                })
-            elif sector == "HEALTHCARE":
-                data.update({
-                    "rd_expense": to_metric_dict(financials.rd_expense),
-                    "cost_of_revenue": to_metric_dict(financials.cost_of_revenue),
-                    "inventory": to_metric_dict(financials.inventory),
-                    "selling_general_admin": to_metric_dict(financials.selling_general_admin),
-                })
-            elif sector == "RETAIL":
-                data.update({
-                    "cost_of_goods_sold": to_metric_dict(financials.cost_of_goods_sold),
-                    "inventory": to_metric_dict(financials.inventory),
-                    "selling_general_admin": to_metric_dict(financials.selling_general_admin),
-                    "depreciation": to_metric_dict(financials.depreciation),
-                })
-            elif sector == "FINANCIALS":
-                data.update({
-                    "advisory_fees": to_metric_dict(financials.advisory_fees),
-                    "trading_revenue": to_metric_dict(financials.trading_revenue),
-                    "compensation_expense": to_metric_dict(financials.compensation_expense),
-                    "investment_income": to_metric_dict(financials.investment_income),
-                })
-            elif sector == "INDUSTRIALS":
-                data.update({
-                    "cost_of_goods_sold": to_metric_dict(financials.cost_of_goods_sold),
-                    "inventory": to_metric_dict(financials.inventory),
-                    "backlog": to_metric_dict(financials.backlog),
-                    "capital_expenditure": to_metric_dict(financials.capital_expenditure),
-                })
-            elif sector == "TRANSPORTATION":
-                data.update({
-                    "operating_revenue": to_metric_dict(financials.operating_revenue),
-                    "fuel_expense": to_metric_dict(financials.fuel_expense),
-                    "labor_expense": to_metric_dict(financials.labor_expense),
-                    "depreciation": to_metric_dict(financials.depreciation),
-                })
-            elif sector == "MATERIALS":
-                data.update({
-                    "cost_of_goods_sold": to_metric_dict(financials.cost_of_goods_sold),
-                    "inventory": to_metric_dict(financials.inventory),
-                    "depreciation": to_metric_dict(financials.depreciation),
-                    "capital_expenditure": to_metric_dict(financials.capital_expenditure),
-                })
-            elif sector == "MINING":
-                data.update({
-                    "mining_revenue": to_metric_dict(financials.mining_revenue),
-                    "cost_of_production": to_metric_dict(financials.cost_of_production),
-                    "depletion": to_metric_dict(financials.depletion),
-                    "exploration_expense": to_metric_dict(financials.exploration_expense),
-                })
+            # Merge cash flow metrics (free_cash_flow, operating_cash_flow, etc.)
+            cf_dict = cash_flow.to_dict()
+            for key in ["operating_cash_flow", "capital_expenditure", "free_cash_flow"]:
+                if key in cf_dict:
+                    data[key] = cf_dict[key]
 
-            return {
-                "source": "SEC EDGAR XBRL",
-                "as_of": datetime.now().strftime("%Y-%m-%d"),
-                "sector": sector,
-                "sic_code": sic_code,
-                "data": data,
-            }
+            # Add company_info for sector detection by downstream analyzer
+            data["company_info"] = company_info
+
+            # Return metrics directly (no wrapper)
+            return data
 
         except Exception as e:
             logger.error(f"SEC data fetch failed for {ticker}: {e}")
@@ -563,84 +452,56 @@ class OrchestratorService:
     async def _get_yahoo_data_safe(self, ticker: str) -> Dict[str, Any]:
         """Get Yahoo data with error handling. Returns supplementary metrics only."""
         try:
-            data = await self.fetcher.fetch_yfinance(ticker)
+            raw_data = await self.fetcher.fetch_yfinance(ticker)
 
-            if "error" in data:
-                return {"error": data["error"], "source": "Yahoo Finance"}
+            if "error" in raw_data:
+                return {"error": raw_data["error"]}
 
-            financials, debt, cash_flow = self.parser.parse_yfinance_data(data, ticker)
+            financials, debt, cash_flow = self.parser.parse_yfinance_data(raw_data, ticker)
 
-            # Helper to convert TemporalMetric to dict (include all temporal fields)
-            def to_metric_dict(tm):
-                if tm is None:
-                    return None
-                return {
-                    "value": tm.value,
-                    "end_date": tm.end_date,
-                    "data_type": tm.data_type,
-                    "fiscal_year": tm.fiscal_year,
-                    "form": tm.form,
-                }
+            # Use to_dict() and filter to supplementary metrics only
+            result = {}
+            fin_dict = financials.to_dict()
+            for key in ["operating_margin_pct", "gross_margin_pct"]:
+                if key in fin_dict:
+                    result[key] = fin_dict[key]
 
-            # Only supplementary metrics not in SEC EDGAR (avoid duplicates)
-            return {
-                "source": "Yahoo Finance",
-                "as_of": datetime.now().strftime("%Y-%m-%d"),
-                "data": {
-                    "operating_margin_pct": to_metric_dict(financials.operating_margin_pct),
-                    "total_debt": to_metric_dict(debt.total_debt) if hasattr(debt, 'total_debt') else None,
-                    "operating_cash_flow": to_metric_dict(cash_flow.operating_cash_flow) if hasattr(cash_flow, 'operating_cash_flow') else None,
-                    "free_cash_flow": to_metric_dict(cash_flow.free_cash_flow) if hasattr(cash_flow, 'free_cash_flow') else None,
-                },
-            }
+            debt_dict = debt.to_dict()
+            for key in ["total_debt"]:
+                if key in debt_dict:
+                    result[key] = debt_dict[key]
+
+            cf_dict = cash_flow.to_dict()
+            for key in ["operating_cash_flow", "free_cash_flow"]:
+                if key in cf_dict:
+                    result[key] = cf_dict[key]
+
+            return result
 
         except Exception as e:
             logger.error(f"Yahoo data fetch failed for {ticker}: {e}")
-            return {"error": str(e), "source": "Yahoo Finance"}
+            return {"error": str(e)}
 
     async def _get_yahoo_fallback_data(self, ticker: str) -> Dict[str, Any]:
         """Get Yahoo data as fallback when SEC fails. Returns core + supplementary metrics."""
         try:
-            data = await self.fetcher.fetch_yfinance(ticker)
+            raw_data = await self.fetcher.fetch_yfinance(ticker)
 
-            if "error" in data:
-                return {"error": data["error"], "source": "Yahoo Finance"}
+            if "error" in raw_data:
+                return {"error": raw_data["error"]}
 
-            financials, debt, cash_flow = self.parser.parse_yfinance_data(data, ticker)
+            financials, debt, cash_flow = self.parser.parse_yfinance_data(raw_data, ticker)
 
-            # Helper to convert TemporalMetric to dict (include all temporal fields)
-            def to_metric_dict(tm):
-                if tm is None:
-                    return None
-                return {
-                    "value": tm.value,
-                    "end_date": tm.end_date,
-                    "data_type": tm.data_type,
-                    "fiscal_year": tm.fiscal_year,
-                    "form": tm.form,
-                }
+            # FALLBACK: Use to_dict() for all metrics
+            result = financials.to_dict()
+            result.update(debt.to_dict())
+            result.update(cash_flow.to_dict())
 
-            # FALLBACK: Core metrics + supplementary metrics
-            return {
-                "source": "Yahoo Finance",
-                "as_of": datetime.now().strftime("%Y-%m-%d"),
-                "data": {
-                    # Core metrics (normally from SEC)
-                    "revenue": to_metric_dict(financials.revenue),
-                    "net_income": to_metric_dict(financials.net_income),
-                    "net_margin_pct": to_metric_dict(financials.net_margin_pct),
-                    "total_assets": to_metric_dict(debt.total_assets) if hasattr(debt, 'total_assets') else None,
-                    # Supplementary metrics
-                    "operating_margin_pct": to_metric_dict(financials.operating_margin_pct),
-                    "total_debt": to_metric_dict(debt.total_debt) if hasattr(debt, 'total_debt') else None,
-                    "operating_cash_flow": to_metric_dict(cash_flow.operating_cash_flow) if hasattr(cash_flow, 'operating_cash_flow') else None,
-                    "free_cash_flow": to_metric_dict(cash_flow.free_cash_flow) if hasattr(cash_flow, 'free_cash_flow') else None,
-                },
-            }
+            return result
 
         except Exception as e:
             logger.error(f"Yahoo fallback fetch failed for {ticker}: {e}")
-            return {"error": str(e), "source": "Yahoo Finance"}
+            return {"error": str(e)}
 
     # =========================================================================
     # HELPER METHODS
