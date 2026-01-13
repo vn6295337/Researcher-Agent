@@ -58,14 +58,48 @@ executor = ThreadPoolExecutor(max_workers=2)
 # DATA FETCHERS (using yfinance)
 # ============================================================
 
-def _fetch_yfinance_sync(ticker: str) -> dict:
+def _fetch_yfinance_sync(ticker: str, max_retries: int = 3) -> dict:
     """
     Synchronous yfinance fetch (runs in thread pool).
     Returns all valuation metrics from Yahoo Finance.
+    Includes retry logic for rate limiting.
     """
+    import time
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            tk = yf.Ticker(ticker)
+            info = tk.info
+
+            # Check if we got rate limited (empty info dict or specific error)
+            if not info:
+                raise Exception("Empty response from yfinance")
+            if "error" in str(info).lower() or "rate" in str(info).lower():
+                raise Exception(f"Possible rate limit: {info}")
+
+            break  # Success, exit retry loop
+
+        except Exception as e:
+            last_error = e
+            error_str = str(e).lower()
+            if "rate" in error_str or "too many" in error_str or "429" in error_str:
+                wait_time = (2 ** attempt) + 1  # Exponential backoff: 2, 3, 5 seconds
+                logger.warning(f"yfinance rate limited for {ticker}, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait_time)
+                continue
+            else:
+                # Non-rate-limit error, don't retry
+                logger.error(f"yfinance fetch error for {ticker}: {e}")
+                return {"error": str(e)}
+
+    # If we exhausted retries
+    if last_error and not info:
+        logger.error(f"yfinance fetch failed after {max_retries} retries for {ticker}: {last_error}")
+        return {"error": str(last_error)}
+
     try:
-        tk = yf.Ticker(ticker)
-        info = tk.info
+        # Proceed with parsing info
 
         if not info or info.get("regularMarketPrice") is None:
             return {"error": f"No data found for ticker {ticker}"}

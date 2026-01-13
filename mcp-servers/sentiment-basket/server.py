@@ -139,7 +139,10 @@ async def fetch_reddit_posts(ticker: str, company_name: str = "") -> dict:
     """
     try:
         async with httpx.AsyncClient() as client:
-            headers = {"User-Agent": "SentimentBasket/1.0"}
+            # Use browser-like User-Agent to avoid Reddit 403 blocks
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
 
             subreddits = ["wallstreetbets", "stocks"]
             posts_list = []
@@ -160,9 +163,17 @@ async def fetch_reddit_posts(ticker: str, company_name: str = "") -> dict:
                 try:
                     response = await client.get(url, headers=headers, params=params, timeout=10)
                     if response.status_code == 429:
-                        continue  # Rate limited, skip this subreddit
+                        logger.warning(f"Reddit rate limited (429) for r/{subreddit}")
+                        continue
+                    if response.status_code == 403:
+                        logger.warning(f"Reddit access forbidden (403) for r/{subreddit}")
+                        continue
+                    if response.status_code != 200:
+                        logger.warning(f"Reddit returned {response.status_code} for r/{subreddit}")
+                        continue
                     data = response.json()
-                except:
+                except Exception as e:
+                    logger.warning(f"Reddit fetch error for r/{subreddit}: {e}")
                     continue
 
                 posts = data.get("data", {}).get("children", [])
