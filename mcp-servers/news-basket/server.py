@@ -35,8 +35,8 @@ def normalize_date(date_str: str) -> str:
 from pathlib import Path
 from typing import Optional
 
-# Import company name normalization from shared configs, domain filters from local config
-from configs.company_name_filters import clean_company_name
+# Import domain filters from local config
+# Note: company_name is already cleaned by app.py before reaching MCP servers
 from config.domain_filters import NEWS_DOMAINS, NYT_NEWS_DESKS, NEWSAPI_DOMAINS
 
 # Load environment variables (later files override earlier ones)
@@ -363,8 +363,8 @@ async def get_all_sources_news(ticker: str, company_name: str = None) -> dict:
     # Tavily query - general search
     tavily_query = base_query
 
-    # NYT query - cleaned company name + "stock" for disambiguation (e.g., Apple vs apple fruit)
-    nyt_query = f"{clean_company_name(company_name or ticker)} stock"
+    # NYT query - company name + "stock" for disambiguation (e.g., Apple vs apple fruit)
+    nyt_query = f"{company_name or ticker} stock"
 
     # NewsAPI query - ticker symbol helps filter
     newsapi_query = f"{company_name or ticker} {ticker} stock"
