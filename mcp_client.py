@@ -472,9 +472,9 @@ async def _extract_and_emit_metrics(
         return
 
     if source == "fundamentals":
-        # Multi-source structure: {"sec_edgar": {"data": {...}}, "yahoo_finance": {"data": {...}}}
-        sec_data = _get_nested_value(result, "sec_edgar", "data") or {}
-        yf_data = _get_nested_value(result, "yahoo_finance", "data") or {}
+        # Multi-source structure (flattened): {"sec_edgar": {...}, "yahoo_finance": {...}}
+        sec_data = result.get("sec_edgar") or {}
+        yf_data = result.get("yahoo_finance") or {}
 
         # Revenue - prefer SEC EDGAR (primary source)
         revenue = sec_data.get("revenue") or yf_data.get("revenue") or {}
@@ -525,106 +525,121 @@ async def _extract_and_emit_metrics(
             await emit_metric(progress_callback, source, "debt_to_equity", debt_to_equity)
 
     elif source == "volatility":
-        # Multi-source: {"yahoo_finance": {"data": {...}}, "alpha_vantage": {"data": {...}}, "market_volatility_context": {...}}
-        yf_data = _get_nested_value(result, "yahoo_finance", "data") or {}
-        av_data = _get_nested_value(result, "alpha_vantage", "data") or {}
-        market_ctx = result.get("market_volatility_context") or {}
-        # Each metric has its own date field (VIX uses "date", beta/hist_vol use "as_of")
+        # Multi-source (flattened): {"fred": {...}, "yahoo_finance": {...}}
+        fred_data = result.get("fred") or {}
+        yf_data = result.get("yahoo_finance") or {}
 
-        # VIX from market context (normalized to have "date" field)
-        vix = market_ctx.get("vix") or {}
+        # VIX from FRED
+        vix = fred_data.get("vix") or {}
         if isinstance(vix, dict) and vix.get("value") is not None:
-            await emit_metric(progress_callback, source, "VIX", vix["value"], end_date=vix.get("date"))
+            await emit_metric(progress_callback, source, "VIX", vix["value"], end_date=vix.get("as_of"))
+        elif isinstance(vix, (int, float)):
+            await emit_metric(progress_callback, source, "VIX", vix)
 
-        # Beta - prefer Yahoo Finance (raw dict has "as_of" field)
-        beta = yf_data.get("beta") or av_data.get("beta")
+        # Beta from Yahoo Finance
+        beta = yf_data.get("beta") or {}
         if isinstance(beta, dict) and beta.get("value") is not None:
             await emit_metric(progress_callback, source, "beta", beta["value"], end_date=beta.get("as_of"))
         elif isinstance(beta, (int, float)):
             await emit_metric(progress_callback, source, "beta", beta)
 
-        # Historical Volatility (raw dict has "as_of" field)
-        hist_vol = yf_data.get("historical_volatility") or av_data.get("historical_volatility")
+        # Historical Volatility from Yahoo Finance
+        hist_vol = yf_data.get("historical_volatility") or {}
         if isinstance(hist_vol, dict) and hist_vol.get("value") is not None:
             await emit_metric(progress_callback, source, "hist_vol", hist_vol["value"], end_date=hist_vol.get("as_of"))
         elif isinstance(hist_vol, (int, float)):
             await emit_metric(progress_callback, source, "hist_vol", hist_vol)
 
     elif source == "macro":
-        # Multi-source: {"bea_bls": {"data": {...}}, "fred": {"data": {...}}}
-        bea_bls = _get_nested_value(result, "bea_bls", "data") or {}
-        fred = _get_nested_value(result, "fred", "data") or {}
-        # Each metric has its own "date" field (actual data date, e.g., Q3 2025)
+        # Multi-source (flattened): {"bea": {...}, "bls": {...}, "fred": {...}}
+        bea = result.get("bea") or {}
+        bls = result.get("bls") or {}
+        fred = result.get("fred") or {}
 
-        # GDP Growth - prefer BEA/BLS
-        gdp = bea_bls.get("gdp_growth") or fred.get("gdp_growth") or {}
+        # GDP Growth from BEA
+        gdp = bea.get("gdp_growth") or {}
         if isinstance(gdp, dict) and gdp.get("value") is not None:
-            await emit_metric(progress_callback, source, "GDP_growth", gdp["value"], end_date=gdp.get("date"))
+            await emit_metric(progress_callback, source, "GDP_growth", gdp["value"], end_date=gdp.get("as_of"))
         elif isinstance(gdp, (int, float)):
             await emit_metric(progress_callback, source, "GDP_growth", gdp)
 
-        # Interest Rate - FRED only
+        # Interest Rate from FRED
         interest = fred.get("interest_rate") or {}
         if isinstance(interest, dict) and interest.get("value") is not None:
-            await emit_metric(progress_callback, source, "interest_rate", interest["value"], end_date=interest.get("date"))
+            await emit_metric(progress_callback, source, "interest_rate", interest["value"], end_date=interest.get("as_of"))
         elif isinstance(interest, (int, float)):
             await emit_metric(progress_callback, source, "interest_rate", interest)
 
-        # Inflation (CPI)
-        inflation = bea_bls.get("cpi_inflation") or fred.get("cpi_inflation") or {}
+        # Inflation (CPI) from BLS
+        inflation = bls.get("cpi_inflation") or {}
         if isinstance(inflation, dict) and inflation.get("value") is not None:
-            await emit_metric(progress_callback, source, "inflation", inflation["value"], end_date=inflation.get("date"))
+            await emit_metric(progress_callback, source, "inflation", inflation["value"], end_date=inflation.get("as_of"))
         elif isinstance(inflation, (int, float)):
             await emit_metric(progress_callback, source, "inflation", inflation)
 
-        # Unemployment
-        unemployment = bea_bls.get("unemployment") or fred.get("unemployment") or {}
+        # Unemployment from BLS
+        unemployment = bls.get("unemployment") or {}
         if isinstance(unemployment, dict) and unemployment.get("value") is not None:
-            await emit_metric(progress_callback, source, "unemployment", unemployment["value"], end_date=unemployment.get("date"))
+            await emit_metric(progress_callback, source, "unemployment", unemployment["value"], end_date=unemployment.get("as_of"))
         elif isinstance(unemployment, (int, float)):
             await emit_metric(progress_callback, source, "unemployment", unemployment)
 
     elif source == "valuation":
-        # Multi-source: {"yahoo_finance": {"data": {...}}, "alpha_vantage": {"data": {...}}}
-        yf_data = _get_nested_value(result, "yahoo_finance", "data") or {}
-        av_data = _get_nested_value(result, "alpha_vantage", "data") or {}
-        # Use regular_market_time (actual market data timestamp) or fallback to as_of
-        market_time = _get_nested_value(result, "yahoo_finance", "regular_market_time") or result.get("as_of")
+        # Multi-source (flattened): {"yahoo_finance": {...}, "alpha_vantage": {...}}
+        yf_data = result.get("yahoo_finance") or {}
+        av_data = result.get("alpha_vantage") or {}
+        # Use regular_market_time from yahoo_finance for timestamp
+        market_time = yf_data.get("regular_market_time")
 
-        # P/E Ratio - prefer Yahoo Finance
-        pe_trailing = yf_data.get("trailing_pe") or av_data.get("trailing_pe")
-        if pe_trailing is not None:
-            await emit_metric(progress_callback, source, "P/E", pe_trailing, end_date=market_time)
+        # P/E Ratio - prefer Yahoo Finance (wrapped in {value, as_of})
+        pe_data = yf_data.get("trailing_pe") or av_data.get("trailing_pe") or {}
+        if isinstance(pe_data, dict) and pe_data.get("value") is not None:
+            await emit_metric(progress_callback, source, "P/E", pe_data["value"], end_date=pe_data.get("as_of") or market_time)
+        elif isinstance(pe_data, (int, float)):
+            await emit_metric(progress_callback, source, "P/E", pe_data, end_date=market_time)
 
         # P/B Ratio
-        pb_ratio = yf_data.get("pb_ratio") or av_data.get("pb_ratio")
-        if pb_ratio is not None:
-            await emit_metric(progress_callback, source, "P/B", pb_ratio, end_date=market_time)
+        pb_data = yf_data.get("pb_ratio") or av_data.get("pb_ratio") or {}
+        if isinstance(pb_data, dict) and pb_data.get("value") is not None:
+            await emit_metric(progress_callback, source, "P/B", pb_data["value"], end_date=pb_data.get("as_of") or market_time)
+        elif isinstance(pb_data, (int, float)):
+            await emit_metric(progress_callback, source, "P/B", pb_data, end_date=market_time)
 
         # P/S Ratio
-        ps_ratio = yf_data.get("ps_ratio") or av_data.get("ps_ratio")
-        if ps_ratio is not None:
-            await emit_metric(progress_callback, source, "P/S", ps_ratio, end_date=market_time)
+        ps_data = yf_data.get("ps_ratio") or av_data.get("ps_ratio") or {}
+        if isinstance(ps_data, dict) and ps_data.get("value") is not None:
+            await emit_metric(progress_callback, source, "P/S", ps_data["value"], end_date=ps_data.get("as_of") or market_time)
+        elif isinstance(ps_data, (int, float)):
+            await emit_metric(progress_callback, source, "P/S", ps_data, end_date=market_time)
 
         # EV/EBITDA
-        ev_ebitda = yf_data.get("ev_ebitda") or av_data.get("ev_ebitda")
-        if ev_ebitda is not None:
-            await emit_metric(progress_callback, source, "EV/EBITDA", ev_ebitda, end_date=market_time)
+        ev_data = yf_data.get("ev_ebitda") or av_data.get("ev_ebitda") or {}
+        if isinstance(ev_data, dict) and ev_data.get("value") is not None:
+            await emit_metric(progress_callback, source, "EV/EBITDA", ev_data["value"], end_date=ev_data.get("as_of") or market_time)
+        elif isinstance(ev_data, (int, float)):
+            await emit_metric(progress_callback, source, "EV/EBITDA", ev_data, end_date=market_time)
 
     elif source == "news":
-        # News-basket returns normalized "items" array
-        items = result.get("items") or []
-        if items and isinstance(items, list) and len(items) > 0:
-            await emit_metric(progress_callback, source, "items_found", len(items))
+        # News-basket returns source-keyed structure: {"tavily": [...], "nyt": [...], "newsapi": [...]}
+        total_items = 0
+        for news_source in ["tavily", "nyt", "newsapi"]:
+            items = result.get(news_source) or []
+            if isinstance(items, list):
+                total_items += len(items)
+        if total_items > 0:
+            await emit_metric(progress_callback, source, "items_found", total_items)
         else:
             await emit_metric(progress_callback, source, "status", "No recent news found")
 
     elif source == "sentiment":
-        # Sentiment-basket returns raw content (items) without scoring
-        # Scoring is applied downstream by analyzer
-        items = result.get("items") or []
-        if items and isinstance(items, list) and len(items) > 0:
-            await emit_metric(progress_callback, source, "items_found", len(items))
+        # Sentiment-basket returns source-keyed structure: {"finnhub": [...], "reddit": [...]}
+        total_items = 0
+        for sent_source in ["finnhub", "reddit"]:
+            items = result.get(sent_source) or []
+            if isinstance(items, list):
+                total_items += len(items)
+        if total_items > 0:
+            await emit_metric(progress_callback, source, "items_found", total_items)
         else:
             await emit_metric(progress_callback, source, "status", "No sentiment content found")
 
