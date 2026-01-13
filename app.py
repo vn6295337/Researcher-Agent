@@ -190,6 +190,10 @@ def parse_research_request(message: dict) -> tuple[Optional[str], Optional[str]]
         if not ticker:
             ticker = text.upper().replace(" ", "")[:5]
 
+    # Clean company name (strip "- Common Stock", "Inc.", etc.)
+    from configs.company_name_filters import clean_company_name
+    company_name = clean_company_name(company_name)
+
     return ticker, company_name
 
 

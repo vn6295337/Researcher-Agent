@@ -5,6 +5,12 @@ Add suffixes/prefixes here as new edge cases are discovered.
 
 # Suffixes to strip from company names (order matters - longer first)
 COMPANY_SUFFIXES = [
+    " - Common Stock",
+    " - Class A Common Stock",
+    " - Class B Common Stock",
+    " - Class C Common Stock",
+    " - Ordinary Shares",
+    " - American Depositary Shares",
     " Corporation",
     " Incorporated",
     " Technologies",
