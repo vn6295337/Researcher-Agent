@@ -60,18 +60,25 @@ Output schemas for all MCP basket servers.
 "yahoo_finance": {
     "current_price": {"value": 175.50, "as_of": "2024-10-31"},
     "trailing_pe": {"value": 28.5, "as_of": "2024-10-31"},
-    "forward_pe": {...},
-    "peg_ratio": {...},
-    "price_to_book": {...},
-    "price_to_sales": {...},
-    "dividend_yield": {...},
-    "52_week_high": {...},
-    "52_week_low": {...}
+    "forward_pe": {"value": 25.2, "as_of": "2024-10-31"},
+    "peg_ratio": {"value": 1.8, "as_of": "2024-10-31"},
+    "pb_ratio": {"value": 45.3, "as_of": "2024-10-31"},
+    "ps_ratio": {"value": 7.5, "as_of": "2024-10-31"},
+    "dividend_yield": {"value": 0.5, "as_of": "2024-10-31"}
 },
 "alpha_vantage": {
+    "trailing_pe": {"value": 28.5, "as_of": "2024-10-31"},
+    "forward_pe": {"value": 25.0, "as_of": "2024-10-31"},
+    "pb_ratio": {"value": 45.0, "as_of": "2024-10-31"},
+    "ps_ratio": {"value": 7.4, "as_of": "2024-10-31"},
     "ev_ebitda": {"value": 22.3, "as_of": "2024-10-31"}
 }
 ```
+
+**Notes:**
+- `pb_ratio` = Price-to-Book ratio
+- `ps_ratio` = Price-to-Sales ratio (TTM)
+- Alpha Vantage provides fallback for all metrics if Yahoo fails
 
 ---
 
@@ -95,20 +102,22 @@ Output schemas for all MCP basket servers.
 
 ```python
 "bea": {
-    "gdp_growth": {"value": 2.8, "period": "Q3 2024", "as_of": "2024-10-31"}
+    "gdp_growth": {"value": 2.8, "data_type": "Quarterly", "as_of": "2024-09-30"}
 },
 "bls": {
-    "unemployment_rate": {"value": 3.8, "period": "Oct 2024", "as_of": "2024-10-31"},
-    "cpi_yoy": {"value": 3.2, "period": "Oct 2024", "as_of": "2024-10-31"},
-    "nonfarm_payrolls": {...}
+    "cpi_inflation": {"value": 3.2, "data_type": "Monthly", "as_of": "2024-10-31"},
+    "unemployment": {"value": 3.8, "data_type": "Monthly", "as_of": "2024-10-31"}
 },
 "fred": {
-    "fed_funds_rate": {"value": 5.33, "as_of": "2024-10-31"},
-    "treasury_10y": {"value": 4.25, "as_of": "2024-10-31"},
-    "treasury_2y": {...},
-    "yield_curve_spread": {...}
+    "interest_rate": {"value": 5.33, "data_type": "Monthly", "as_of": "2024-10-31"}
 }
 ```
+
+**Notes:**
+- `cpi_inflation` = Year-over-year CPI inflation rate (%)
+- `unemployment` = Unemployment rate (%)
+- `interest_rate` = Federal Funds Effective Rate (%)
+- FRED provides fallbacks for GDP, CPI, unemployment if BEA/BLS fail
 
 ---
 
