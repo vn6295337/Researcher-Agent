@@ -66,6 +66,7 @@ def _fetch_yfinance_sync(ticker: str, max_retries: int = 3) -> dict:
     """
     import time
     last_error = None
+    info = None  # Initialize to avoid NameError if all retries fail
 
     for attempt in range(max_retries):
         try:
