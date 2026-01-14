@@ -71,6 +71,12 @@ NET_INCOME_CONCEPTS = [
     "NetIncomeLossAvailableToCommonStockholdersBasic",
 ]
 
+# EPS concepts (unit: USD/shares)
+EPS_CONCEPTS = [
+    "EarningsPerShareBasic",
+    "EarningsPerShareDiluted",
+]
+
 # Gross profit concepts
 GROSS_PROFIT_CONCEPTS = [
     "GrossProfit",
@@ -364,6 +370,9 @@ class ParserService:
         total_liabilities = self.get_latest_value(facts, TOTAL_LIABILITIES_CONCEPTS)
         stockholders_equity = self.get_latest_value(facts, STOCKHOLDERS_EQUITY_CONCEPTS)
 
+        # Extract EPS (unit is "USD/shares" not "USD")
+        eps = self.get_latest_value(facts, EPS_CONCEPTS, unit="USD/shares")
+
         # Calculate margins
         gross_margin_pct = None
         operating_margin_pct = None
@@ -451,6 +460,7 @@ class ParserService:
             total_assets=total_assets,
             total_liabilities=total_liabilities,
             stockholders_equity=stockholders_equity,
+            eps=eps,
             source="SEC EDGAR XBRL",
             sector=sector,
             sic_code=sic_code,

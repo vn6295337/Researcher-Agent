@@ -73,6 +73,7 @@ class ParsedFinancials:
     total_assets: Optional[TemporalMetric] = None
     total_liabilities: Optional[TemporalMetric] = None
     stockholders_equity: Optional[TemporalMetric] = None
+    eps: Optional[TemporalMetric] = None
     source: str = "Unknown"
     as_of: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d"))
 
@@ -192,7 +193,8 @@ class ParsedFinancials:
         for field_name in [
             "revenue", "net_income", "gross_profit", "operating_income",
             "gross_margin_pct", "operating_margin_pct", "net_margin_pct",
-            "revenue_growth_3yr", "total_assets", "total_liabilities", "stockholders_equity"
+            "revenue_growth_3yr", "total_assets", "total_liabilities", "stockholders_equity",
+            "eps"
         ]:
             value = getattr(self, field_name)
             if value:
